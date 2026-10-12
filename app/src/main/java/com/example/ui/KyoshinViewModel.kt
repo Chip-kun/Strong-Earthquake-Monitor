@@ -211,139 +211,65 @@ class KyoshinViewModel(application: Application) : AndroidViewModel(application)
     private var previousEEWCountdown = -1
     private var lastAnnouncedEarthquakeId: String? = null
 
-            // 保存状態が「オン」のときだけ動かす
+　　　    // 【214行目から下をすべてこれに置き換え】
+    init {
         if (_isSeismometerEnabled.value) {
             deviceSeismometer.start()
         } else {
             deviceSeismometer.stop()
         }
-
         deviceSeismometer.onShakeDetected = { gal, shindo ->
-            // オン状態のときのみ音声通知を鳴らす
-            if (_isSeismometerEnabled.value) {
-                voiceAlertManager.announceDeviceShake(gal, shindo)
-            }
+            if (_isSeismometerEnabled.value) { voiceAlertManager.announceDeviceShake(gal, shindo) }
         }
-
-
-        // Live JST Clock ticker
         viewModelScope.launch {
-            val dateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm:ss 'JST'", Locale.JAPAN)
-            dateFormat.timeZone = TimeZone.getTimeZone("Asia/Tokyo")
-            while (true) {
-                _currentTimeStr.value = dateFormat.format(Date())
-                delay(1000)
-            }
+            val df = SimpleDateFormat("yyyy/MM/dd HH:mm:ss 'JST'", Locale.JAPAN).apply { timeZone = TimeZone.getTimeZone("Asia/Tokyo") }
+            while (true) { _currentTimeStr.value = df.format(Date()); delay(1000) }
         }
-
-        // Monitor EEW status and trigger detailed voice alarms and countdowns
         viewModelScope.launch {
             repository.activeEEW.collect { eew ->
                 if (eew != null) {
-                    if (previousEEWCountdown == -1) {
-                        voiceAlertManager.announceDetailedEEW(
-                            alert = eew,
-                            userLocationName = userLocation.value?.placeName,
-                            userDistanceKm = distanceToEpicenter.value,
-                            userEtaSec = userEtaSec.value,
-                            userEstimatedShindo = userEstimatedShindo.value
-                        )
-                    }
-
-                    if (eew.countdownSeconds != previousEEWCountdown && eew.countdownSeconds >= 0) {
-                        voiceAlertManager.announceCountdown(eew.countdownSeconds)
-                    }
+                    if (previousEEWCountdown == -1) { voiceAlertManager.announceDetailedEEW(eew, userLocation.value?.placeName, distanceToEpicenter.value, userEtaSec.value, userEstimatedShindo.value) }
+                    if (eew.countdownSeconds != previousEEWCountdown && eew.countdownSeconds >= 0) { voiceAlertManager.announceCountdown(eew.countdownSeconds) }
                     previousEEWCountdown = eew.countdownSeconds
-                } else {
-                    previousEEWCountdown = -1
-                }
+                } else { previousEEWCountdown = -1 }
             }
         }
-
-        // Monitor earthquake history for detailed auto-announcements
         viewModelScope.launch {
             repository.earthquakes.collect { list ->
                 val first = list.firstOrNull() ?: return@collect
-                if (lastAnnouncedEarthquakeId == null) {
-                    lastAnnouncedEarthquakeId = first.id
-                } else if (first.id != lastAnnouncedEarthquakeId) {
-                    lastAnnouncedEarthquakeId = first.id
-                    voiceAlertManager.announceDetailedEarthquakeReport(first)
-                }
+                if (lastAnnouncedEarthquakeId == null) { lastAnnouncedEarthquakeId = first.id }
+                else if (first.id != lastAnnouncedEarthquakeId) { lastAnnouncedEarthquakeId = first.id; voiceAlertManager.announceDetailedEarthquakeReport(first) }
             }
         }
     }
 
-    fun setMapStyle(style: MapStyle) {
-        _mapStyle.value = style
-    }
-
-    fun toggleStationLabels() {
-        _showStationLabels.value = !_showStationLabels.value
-    }
-
-    fun selectTab(tab: AppTab) {
-        _currentTab.value = tab
-    }
+    fun setMapStyle(style: MapStyle) { _mapStyle.value = style }
+    fun toggleStationLabels() { _showStationLabels.value = !_showStationLabels.value }
+    fun selectTab(tab: AppTab) { _currentTab.value = tab }
+    fun dismissEEW() { repository.dismissEEW(); voiceAlertManager.stopSpeaking() }
+    fun announceEarthquake(item: EarthquakeItem) { voiceAlertManager.announceDetailedEarthquakeReport(item) }
+    fun toggleCheckItem(id: String) { _checklist.value = _checklist.value.map { if (it.id == id) it.copy(isChecked = !it.isChecked) else it } }
 
     fun triggerDrill(scenario: DrillScenario) {
         val alert = EEWAlert(
-            id = "drill_${System.currentTimeMillis()}",
-            reportNum = 1,
-            isFinal = false,
-            isWarning = scenario.isWarning,
-            hypocenter = scenario.hypocenter,
-            lat = scenario.lat,
-            lon = scenario.lon,
-            depthKm = scenario.depthKm,
-            magnitude = scenario.magnitude,
-            maxShindo = scenario.maxShindo,
-            originTimeMillis = System.currentTimeMillis(),
-            countdownSeconds = scenario.countdownSec,
-            isActive = true,
-            isDrill = true,
-            affectedPrefectures = scenario.affectedPrefectures
+            id = "drill_${System.currentTimeMillis()}", reportNum = 1, isFinal = false,
+            isWarning = scenario.isWarning, hypocenter = scenario.hypocenter, lat = scenario.lat, lon = scenario.lon,
+            depthKm = scenario.depthKm, magnitude = scenario.magnitude, maxShindo = scenario.maxShindo,
+            originTimeMillis = System.currentTimeMillis(), countdownSeconds = scenario.countdownSec,
+            isActive = true, isDrill = true, affectedPrefectures = scenario.affectedPrefectures
         )
         repository.triggerDrillEEW(alert)
     }
 
-    fun dismissEEW() {
-        repository.dismissEEW()
-        voiceAlertManager.stopSpeaking()
-    }
-
     fun repeatEEWAnnouncement() {
         val current = repository.activeEEW.value ?: return
-        voiceAlertManager.announceDetailedEEW(
-            alert = current,
-            userLocationName = userLocation.value?.placeName,
-            userDistanceKm = distanceToEpicenter.value,
-            userEtaSec = userEtaSec.value,
-            userEstimatedShindo = userEstimatedShindo.value
-        )
+        voiceAlertManager.announceDetailedEEW(current, userLocation.value?.placeName, distanceToEpicenter.value, userEtaSec.value, userEstimatedShindo.value)
     }
 
-    fun announceEarthquake(item: EarthquakeItem) {
-        voiceAlertManager.announceDetailedEarthquakeReport(item)
-    }
-
-    fun toggleCheckItem(id: String) {
-        _checklist.value = _checklist.value.map {
-            if (it.id == id) it.copy(isChecked = !it.isChecked) else it
-        }
-    }
-        
-        // 【追加】画面のスイッチが切り替わったときに呼び出す処理関数
     fun toggleSeismometer(enabled: Boolean) {
         _isSeismometerEnabled.value = enabled
         sharedPreferences.edit().putBoolean("seismometer_enabled", enabled).apply()
-
-        if (enabled) {
-            deviceSeismometer.start()
-        } else {
-            deviceSeismometer.stop()
-            deviceSeismometer.resetPeak() // オフ時は数値をクリア
-        }
+        if (enabled) { deviceSeismometer.start() } else { deviceSeismometer.stop(); deviceSeismometer.resetPeak() }
     }
 
     override fun onCleared() {
@@ -352,4 +278,3 @@ class KyoshinViewModel(application: Application) : AndroidViewModel(application)
         voiceAlertManager.destroy()
     }
 }
-
