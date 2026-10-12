@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>強震モニター速報 - GitHubオープンソース防災アプリ</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --accent-color: #58a6ff;
+            --kmoni-red: #ff453a;
+            --text-color: #c9d1d9;
+            --text-main: #f0f6fc;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+
+        /* ヒーローセクション */
+        .hero {
+            text-align: center;
+            padding: 100px 20px 60px 20px;
+            background: linear-gradient(180deg, #161b22 0%, var(--bg-color) 100%);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .app-badge-live {
+            background-color: var(--kmoni-red);
+            color: #ffffff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 15px;
+        }
+
+        .app-badge-live::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            background-color: #fff;
+            border-radius: 50%;
+            display: inline-block;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0% { opacity: 0.2; }
+            50% { opacity: 1; }
+            100% { opacity: 0.2; }
+        }
+
+        .hero h1 {
+            font-size: 2.8rem;
+            color: var(--text-main);
+            margin: 0 0 10px 0;
+            font-weight: 800;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            max-width: 650px;
+            margin: 0 auto 40px auto;
+            color: #8b949e;
+        }
+
+        /* GitHubダウンロードエリア */
+        .github-zone {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 25px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+
+        .github-zone p {
+            font-size: 14px;
+            margin: 0 0 15px 0;
+            color: #8b949e;
+        }
+
+        .btn-github {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background-color: #24292f;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border: 1px solid rgba(255, 69, 58, 0.25);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .btn-github:hover {
+            background-color: #30363d;
+            transform: translateY(-1px);
+        }
+
+        .btn-github svg {
+            fill: currentColor;
+            width: 24px;
+            height: 24px;
+        }
+
+        /* メインコンテンツ（機能紹介） */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 1.8rem;
+            color: var(--text-main);
+            margin-bottom: 50px;
+        }
+
+        /* 縦並びのセクションレイアウト */
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 50px;
+            margin-bottom: 80px;
+        }
+
+        .feature-item:nth-child(even) {
+            flex-direction: row-reverse;
+        }
+
+        .feature-text {
+            flex: 1;
+        }
+
+        .feature-text h3 {
+            margin: 0 0 15px 0;
+            color: var(--text-main);
+            font-size: 1.6rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .feature-text p {
+            margin: 0;
+            font-size: 1.05rem;
+            color: #8b949e;
+            line-height: 1.6;
+        }
+
+        /* スクリーンショットをはめ込む枠 */
+        .feature-media {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+        }
+
+        .app-screenshot {
+            width: 100%;
+            max-width: 280px;
+            height: auto;
+            border: 4px solid var(--border-color);
+            border-radius: 20px;
+            box-shadow: 0 12px 35px rgba(0,0,0,0.6);
+            background-color: #000;
+        }
+
+        /* インストール手順 */
+        .installation {
+            background-color: #161b2244;
+            border-top: 1px solid var(--border-color);
+            padding: 60px 20px;
+        }
+
+        .steps {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .steps ol {
+            padding-left: 20px;
+            color: #8b949e;
+        }
+
+        .steps li {
+            margin-bottom: 12px;
+            color: var(--text-color);
+        }
+
+        .steps strong {
+            color: var(--text-main);
+        }
+
+        /* フッター */
+        footer {
+            text-align: center;
+            padding: 40px 25px;
+            border-top: 1px solid var(--border-color);
+            font-size: 13px;
+            color: #8b949e;
+        }
+
+        /* レスポンシブ */
+        @media (max-width: 768px) {
+            .feature-item, .feature-item:nth-child(even) {
+                flex-direction: column;
+                gap: 30px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ヒーローセクション -->
+    <header class="hero">
+        <div class="app-badge-live">LIVE MONITOR</div>
+        <h1>強震モニター速報</h1>
+        <p>全国のリアルタイム震度・波形モニターから、各種シミュレーター、安否連絡まで網羅したオープンソースの次世代防災アプリ。</p>
+        
+        <!-- GitHub誘導エリア -->
+        <div class="github-zone">
+            <p>最新リリースのパッケージ（APK/各種ファイル）は GitHub から安全にダウンロードできます。</p>
+            <a href="https://github.com" class="btn-github" target="_blank">
+                <svg viewBox="0 0 16 16" version="1.1" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2 1.28.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-1.28 2.2-1.28.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
+                GitHubでダウンロード (Releases)
+            </a>
+        </div>
+    </header>
+
+    <!-- 機能紹介 -->
+    <main class="container">
+        <h2 class="section-title">充実の防犯・防災機能</h2>
+        
+        <!-- 機能1 -->
+        <div class="feature-item">
+            <div class="feature-text">
+                <h3>🗺️ リアルタイム強震モニタ</h3>
+                <p>地表・地中の微細な震度データを日本地図上にリアルタイム可視化。最寄りのリアルタイム波形モニター（EW/NS/UD）により、100Hzサンプリングの細かな揺れの推移を克明に描画します。</p>
+            </div>
+            <div class="feature-media">
+                <img class="app-screenshot" src="img/screenshot_kmoni.png" alt="強震モニタ画面">
+            </div>
+        </div>
+        
+        <!-- 機能2 -->
+        <div class="feature-item">
+            <div class="feature-text">
+                <h3>📊 地震情報・履歴一覧</h3>
+                <p>気象庁やP2P地震情報のシステムと連携し、各地で発生した地震履歴を素早くリストアップ。震度、規模（M）、深さ、そして最も重要な「津波の心配の有無」を明瞭に伝えます。</p>
+            </div>
+            <div class="feature-media">
+                <img class="app-screenshot" src="img/screenshot_history.png" alt="地震履歴画面">
+            </div>
+        </div>
+        
+        <!-- 機能3 -->
+        <div class="feature-item">
+            <div class="feature-text">
+                <h3>🛡️ 防災マニュアル & 安否連絡</h3>
+                <p>「無事です」などの状況を選ぶだけで、居場所を含んだ連絡用テキストを即座に生成し共有可能。屋内・自動車運転中など、災害時の状況に応じた確実な初動行動指針も常備しています。</p>
+            </div>
+            <div class="feature-media">
+                <img class="app-screenshot" src="img/screenshot_manual.png" alt="防災マニュアル画面">
+            </div>
+        </div>
+
+        <!-- 機能4 -->
+        <div class="feature-item">
+            <div class="feature-text">
+                <h3>🔔 緊急地震速報 訓練シミュレーター</h3>
+                <p>首都直下地震や南海トラフ巨大地震など、様々な災害シナリオを想定したリアルな発令シミュレーション機能を搭載。実際の警報音や音声カウントダウン、波形伝播を疑似体験し、日頃の備えに活かせます。</p>
+            </div>
+            <div class="feature-media">
+                <img class="app-screenshot" src="img/screenshot_training.png" alt="訓練シミュレーター画面">
+            </div>
+        </div>
+        
+        <!-- 機能5 -->
+        <div class="feature-item">
+            <div class="feature-text">
+                <h3>📱 マイ地震計（端末加速度計）</h3>
+                <p>デバイスに内蔵されている高精度センサーを使用し、今いるその場所の「瞬間加速度（gal）」と「推定計測震度」をリアルタイム測定。家具の転倒目安となるピーク加速度もしっかりホールド記録します。</p>
+            </div>
+            <div class="feature-media">
+                <img class="app-screenshot" src="img/screenshot_sensor.png" alt="マイ地震計画面">
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 導入手順 -->
+    <section class="installation">
+        <div class="steps">
+            <h2 style="color: var(--text-main); font-size: 1.5rem; margin-top: 0;">📦 インストール方法</h2>
+            <ol>
+                <li>上のボタンから <strong>GitHub Releases</strong> ページにアクセスします。</li>
+                <li>最新バージョン（Latest）の <strong>Assets</strong> 項目を展開します。</li>
+                <li>端末に合ったファイル（Androidの場合は <code>.apk</code> など）を選択してダウンロードします。</li>
+                <li>ファイルを開き、画面の指示に従ってインストールを完了させてください。</li>
+            </ol>
+        </div>
+    </section>
+
+    <!-- フッター -->
+    <footer>
