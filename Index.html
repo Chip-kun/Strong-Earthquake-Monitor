@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>強震モニタ リアルタイム表示</title>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        .monitor-container {
+            position: relative;
+            width: 352px;
+            height: 400px;
+            background-color: #000;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        /* 画像を綺麗に重ね合わせるためのスタイル */
+        .monitor-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .info-panel {
+            margin-top: 15px;
+            font-size: 14px;
+            text-align: center;
+        }
+        .time-display {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00ffcc;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="monitor-container">
+        <!-- ベースの日本地図レイヤー -->
+        <img class="monitor-layer" src="http://bosai.go.jp" alt="日本地図">
+        <!-- リアルタイム震度レイヤー（JavaScriptで1秒ごとに更新） -->
+        <img id="shindo-layer" class="monitor-layer" src="" alt="リアルタイム震度">
+    </div>
+
+    <div class="info-panel">
+        <div id="current-time" class="time-display">取得中...</div>
+        <div>※データ提供：<a href="http://www.kmoni.bosai.go.jp/" target="_blank" style="color: #00ffcc; text-decoration: none;">防災科学技術研究所 強震モニタ</a></div>
+    </div>
+
+    <script>
+        const shindoImg = document.getElementById('shindo-layer');
+        const timeDiv = document.getElementById('current-time');
+
+        function updateMonitor() {
+            // 強震モニタのサーバー時刻に合わせるため、約2秒前の時刻を取得
+            const now = new Date(Date.now() - 2000);
+            
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hour = String(now.getHours()).padStart(2, '0');
+            const minute = String(now.getMinutes()).padStart(2, '0');
+            const second = String(now.getSeconds()).padStart(2, '0');
+
+            const dateStr = `${year}${month}${day}`;
+            const timeStr = `${year}${month}${day}${hour}${minute}${second}`;
+
+            // 強震モニタのリアルタイム震度(jma_s)画像のURLを生成
+            // ※キャッシュ対策として末尾にランダムなクエリを付与
+            const imgUrl = `http://bosai.go.jp{dateStr}/${timeStr}.jma_s.gif?_=${Date.now()}`;
+            
+            // 画像の読み込み（エラー時は前の画像を維持）
+            const tempImg = new Image();
+            tempImg.onload = function() {
+                shindoImg.src = imgUrl;
+                timeDiv.innerText = `${year}/${month}/${day} ${hour}:${minute}:${second}`;
+            };
+            tempImg.src = imgUrl;
+        }
+
+        // 1秒ごとに更新処理を実行
+        setInterval(updateMonitor, 1000);
+        updateMonitor();
+    </script>
+</body>
+</html>
