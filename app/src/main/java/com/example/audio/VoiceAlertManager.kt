@@ -224,7 +224,7 @@ class VoiceAlertManager(private val context: Context) : TextToSpeech.OnInitListe
     }
 
     /**
-     * Highly detailed Emergency Earthquake Warning announcement with location and affected areas
+     * Highly detailed Emergency Earthquake Warning announcement with location, detailed municipal regions, and tsunami warning
      */
     fun announceDetailedEEW(
         alert: EEWAlert,
@@ -261,12 +261,23 @@ class VoiceAlertManager(private val context: Context) : TextToSpeech.OnInitListe
                 }
             }
 
+            // Prefecture level
             if (alert.affectedPrefectures.isNotEmpty()) {
-                append("強い揺れが警戒される地域は、${alert.affectedPrefectures.take(5).joinToString("、")}です。")
+                append("強い揺れが警戒される都道府県は、${alert.affectedPrefectures.take(5).joinToString("、")}です。")
+            }
+
+            // Detailed Municipal / Sub-regional areas
+            if (alert.detailedAreas.isNotEmpty()) {
+                append("詳しい警戒地域は、${alert.detailedAreas.take(6).joinToString("、")}です。")
+            }
+
+            // Tsunami Warning announcement
+            if (alert.tsunamiWarning.isNotEmpty() && alert.tsunamiWarning != "津波の心配なし") {
+                append("津波情報です。${alert.tsunamiWarning}。海岸や河口付近にいる方は、直ちに高台や避難ビルなど安全な場所へ避難してください！")
             }
 
             if (alert.isWarning) {
-                append("倒れる家具や落下物から身を守り、ただちに安全な場所に避難してください！海岸付近にいる方は、津波の発生に厳重に警戒してください！")
+                append("倒れる家具や落下物から身を守り、ただちに安全な場所に避難してください！")
             } else {
                 append("今後の情報に十分注意してください。")
             }
@@ -299,7 +310,8 @@ class VoiceAlertManager(private val context: Context) : TextToSpeech.OnInitListe
     }
 
     /**
-     * Highly detailed real earthquake report with prefectural intensity breakdown and tsunami details
+     * Highly detailed real earthquake report with prefectural intensity breakdown,
+     * detailed cities/municipalities, and urgent tsunami warnings
      */
     fun announceDetailedEarthquakeReport(item: EarthquakeItem) {
         val message = buildString {
@@ -310,16 +322,34 @@ class VoiceAlertManager(private val context: Context) : TextToSpeech.OnInitListe
             append("地震の規模、マグニチュードは${item.magnitude}と推定されます。")
             append("この地震により、最大震度${item.maxScale}が観測されました。")
 
-            // Breakdown of prefectures
+            // Breakdown of prefectures and detailed cities
             if (item.intensityPoints.isNotEmpty()) {
                 val grouped = item.intensityPoints.groupBy { it.scale }
                 val maxScalePts = grouped[item.maxScale]
                 if (!maxScalePts.isNullOrEmpty()) {
-                    append("最大震度${item.maxScale}を観測したのは、${maxScalePts.map { it.prefecture }.distinct().take(4).joinToString("、")}です。")
+                    append("最大震度${item.maxScale}を観測した都道府県は、${maxScalePts.map { it.prefecture }.distinct().take(4).joinToString("、")}です。")
+
+                    // Detailed municipalities/cities observing max scale
+                    val allCitiesInMaxScale = maxScalePts.flatMap { it.cities }.distinct()
+                    if (allCitiesInMaxScale.isNotEmpty()) {
+                        append("詳しい観測地域は、${allCitiesInMaxScale.take(6).joinToString("、")}です。")
+                    }
                 }
+            } else if (item.detailedRegions.isNotEmpty()) {
+                append("震度を観測した詳しい地域は、${item.detailedRegions.take(6).joinToString("、")}です。")
             }
 
-            append("${item.tsunamiInfo}。")
+            // Tsunami Warning details and immediate action alert
+            if (item.tsunamiInfo.contains("大津波警報")) {
+                append("大津波警報が発表されています！沿岸部や川の河口付近にいる方は、直ちに高台や津波避難ビルへ逃げてください！命を守る行動を最優先してください！")
+            } else if (item.tsunamiInfo.contains("津波警報")) {
+                append("津波警報が発表されています！海岸付近にいる方は、直ちに高台など安全な場所へ避難してください！津波は第1波より第2波以降が高くなることがあります！")
+            } else if (item.tsunamiInfo.contains("津波注意報")) {
+                append("津波注意報が発表されています。海の中にいる方は直ちに海から上がり、海岸から離れてください。")
+            } else {
+                append("${item.tsunamiInfo}。")
+            }
+
             append("今後の余震活動にも十分ご注意ください。")
         }
         speak(message, flush = true)

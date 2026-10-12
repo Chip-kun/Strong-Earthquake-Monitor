@@ -94,11 +94,18 @@ fun P2PQuakeResponse.toEarthquakeItem(): EarthquakeItem? {
     val pointList = points?.groupBy { it.pref ?: "" }
         ?.map { (pref, list) ->
             val maxPointScale = list.maxOfOrNull { it.scale ?: 0 } ?: 0
+            val cityList = list.mapNotNull { it.addr }.distinct().take(6)
             PrefectureIntensity(
                 prefecture = pref,
-                scale = parseShindoScaleToText(maxPointScale)
+                scale = parseShindoScaleToText(maxPointScale),
+                cities = cityList
             )
         } ?: emptyList()
+
+    val detailedCityRegions = points?.filter { (it.scale ?: 0) >= rawScale - 10 }
+        ?.mapNotNull { pt -> pt.addr ?: pt.pref }
+        ?.distinct()
+        ?.take(8) ?: emptyList()
 
     return EarthquakeItem(
         id = id ?: "${System.currentTimeMillis()}",
@@ -110,6 +117,7 @@ fun P2PQuakeResponse.toEarthquakeItem(): EarthquakeItem? {
         tsunamiInfo = tsunamiDesc,
         lat = hypo.latitude ?: 35.0,
         lon = hypo.longitude ?: 138.0,
-        intensityPoints = pointList
+        intensityPoints = pointList,
+        detailedRegions = detailedCityRegions
     )
 }

@@ -137,10 +137,11 @@ class KyoshinRepository(
                 lat = 35.7,
                 lon = 140.6,
                 intensityPoints = listOf(
-                    PrefectureIntensity("千葉県", "3"),
-                    PrefectureIntensity("茨城県", "2"),
-                    PrefectureIntensity("東京都", "1")
-                )
+                    PrefectureIntensity("千葉県", "3", listOf("銚子市", "旭市", "匝瑳市", "香取市")),
+                    PrefectureIntensity("茨城県", "2", listOf("神栖市", "鹿嶋市", "潮来市")),
+                    PrefectureIntensity("東京都", "1", listOf("江戸川区", "江東区"))
+                ),
+                detailedRegions = listOf("千葉県北東部", "銚子市川口町", "旭市ニ", "神栖市溝口")
             ),
             EarthquakeItem(
                 id = "demo_2",
@@ -149,45 +150,49 @@ class KyoshinRepository(
                 maxScale = "4",
                 magnitude = 5.1,
                 depthKm = 50,
-                tsunamiInfo = "津波の心配なし",
+                tsunamiInfo = "津波注意報発表中",
                 lat = 37.5,
                 lon = 141.6,
                 intensityPoints = listOf(
-                    PrefectureIntensity("福島県", "4"),
-                    PrefectureIntensity("宮城県", "3"),
-                    PrefectureIntensity("茨城県", "2")
-                )
+                    PrefectureIntensity("福島県", "4", listOf("相馬市", "南相馬市", "いわき市", "双葉町")),
+                    PrefectureIntensity("宮城県", "3", listOf("仙台市宮城野区", "石巻市", "名取市", "岩沼市")),
+                    PrefectureIntensity("茨城県", "2", listOf("日立市", "北茨城市", "高萩市"))
+                ),
+                detailedRegions = listOf("福島県浜通り", "相馬市中村", "南相馬市原町区", "いわき市小名浜", "名取市増田")
             ),
             EarthquakeItem(
                 id = "demo_3",
                 time = "10/10 22:30",
                 hypocenter = "日向灘",
-                maxScale = "3",
-                magnitude = 4.7,
+                maxScale = "5弱",
+                magnitude = 6.2,
                 depthKm = 30,
-                tsunamiInfo = "津波の心配なし",
+                tsunamiInfo = "津波注意報（宮崎県・高知県沿岸）",
                 lat = 31.9,
                 lon = 131.8,
                 intensityPoints = listOf(
-                    PrefectureIntensity("宮崎県", "3"),
-                    PrefectureIntensity("鹿児島県", "2"),
-                    PrefectureIntensity("大分県", "1")
-                )
+                    PrefectureIntensity("宮崎県", "5弱", listOf("宮崎市", "日南市", "串間市")),
+                    PrefectureIntensity("鹿児島県", "4", listOf("大崎町", "志布志市", "鹿屋市")),
+                    PrefectureIntensity("大分県", "3", listOf("佐伯市", "津久見市"))
+                ),
+                detailedRegions = listOf("宮崎県南部平野部", "日南市油津", "宮崎市霧島", "串間市奈留", "志布志市志布志町")
             ),
             EarthquakeItem(
                 id = "demo_4",
                 time = "10/09 08:15",
                 hypocenter = "能登半島沖",
-                maxScale = "3",
-                magnitude = 4.2,
+                maxScale = "6強",
+                magnitude = 7.1,
                 depthKm = 10,
-                tsunamiInfo = "津波の心配なし",
+                tsunamiInfo = "大津波警報発表中（沿岸直ちに避難）",
                 lat = 37.4,
                 lon = 137.2,
                 intensityPoints = listOf(
-                    PrefectureIntensity("石川県", "3"),
-                    PrefectureIntensity("富山県", "2")
-                )
+                    PrefectureIntensity("石川県", "6強", listOf("輪島市", "珠洲市", "能登町", "穴水町")),
+                    PrefectureIntensity("富山県", "5強", listOf("富山市", "高岡市", "氷見市")),
+                    PrefectureIntensity("新潟県", "5弱", listOf("上越市", "長岡市", "佐渡市"))
+                ),
+                detailedRegions = listOf("石川県能登地方", "輪島市鳳至町", "珠洲市正院町", "能登町宇出津", "氷見市加納")
             ),
             EarthquakeItem(
                 id = "demo_5",
@@ -200,11 +205,12 @@ class KyoshinRepository(
                 lat = 36.1,
                 lon = 139.9,
                 intensityPoints = listOf(
-                    PrefectureIntensity("茨城県", "4"),
-                    PrefectureIntensity("栃木県", "3"),
-                    PrefectureIntensity("埼玉県", "3"),
-                    PrefectureIntensity("東京都", "2")
-                )
+                    PrefectureIntensity("茨城県", "4", listOf("坂東市", "常総市", "つくばみらい市")),
+                    PrefectureIntensity("栃木県", "3", listOf("下野市", "真岡市", "宇都宮市")),
+                    PrefectureIntensity("埼玉県", "3", listOf("春日部市", "久喜市", "宮代町")),
+                    PrefectureIntensity("東京都", "2", listOf("足立区", "北区", "練馬区"))
+                ),
+                detailedRegions = listOf("茨城県南部", "坂東市岩井", "常総市新石下", "下野市田中", "春日部市粕壁")
             )
         )
     }

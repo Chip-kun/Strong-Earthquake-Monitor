@@ -61,7 +61,9 @@ data class EEWAlert(
     var countdownSeconds: Int = 15,
     val isActive: Boolean = true,
     val isDrill: Boolean = false,
-    val affectedPrefectures: List<String> = emptyList()
+    val affectedPrefectures: List<String> = emptyList(),
+    val detailedAreas: List<String> = emptyList(), // 市町村・細分化地域（例: 大阪府北部、伊豆大島、能登、中越など）
+    val tsunamiWarning: String = "津波の心配なし" // "大津波警報", "津波警報", "津波注意報", "津波の心配なし"
 )
 
 data class EarthquakeItem(
@@ -71,15 +73,17 @@ data class EarthquakeItem(
     val maxScale: String, // "1", "2", "3", "4", "5-", "5+", "6-", "6+", "7"
     val magnitude: Double,
     val depthKm: Int,
-    val tsunamiInfo: String, // "津波の心配なし", "津波注意報", "津波警報"
+    val tsunamiInfo: String, // "津波の心配なし", "津波注意報", "津波警報", "大津波警報"
     val lat: Double,
     val lon: Double,
-    val intensityPoints: List<PrefectureIntensity> = emptyList()
+    val intensityPoints: List<PrefectureIntensity> = emptyList(),
+    val detailedRegions: List<String> = emptyList() // 詳しい震度観測市区町村・地域
 )
 
 data class PrefectureIntensity(
     val prefecture: String,
-    val scale: String
+    val scale: String,
+    val cities: List<String> = emptyList() // 観測市区町村名
 )
 
 data class SeismographSample(
@@ -152,6 +156,17 @@ object GeoProjection {
 
     fun toNormY(lat: Double): Float {
         return ((MAX_LAT - lat) / (MAX_LAT - MIN_LAT)).toFloat().coerceIn(0.01f, 0.99f)
+    }
+
+    fun distanceKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val r = 6371.0 // Earth radius in km
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        return r * c
     }
 }
 

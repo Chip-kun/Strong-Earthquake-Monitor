@@ -233,6 +233,23 @@ fun DrillScenarioCard(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium
                 )
+                if (scenario.detailedAreas.isNotEmpty()) {
+                    Text(
+                        text = "詳細地域: ${scenario.detailedAreas.take(3).joinToString("、")}",
+                        color = Color(0xFFCBD5E1),
+                        fontSize = 10.sp,
+                        maxLines = 1
+                    )
+                }
+                if (scenario.tsunamiWarning != "津波の心配なし") {
+                    Text(
+                        text = "⚠️ ${scenario.tsunamiWarning}",
+                        color = if (scenario.tsunamiWarning.contains("大津波")) Color(0xFFFF6B6B) else Color(0xFFFBBF24),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                }
             }
 
             Button(

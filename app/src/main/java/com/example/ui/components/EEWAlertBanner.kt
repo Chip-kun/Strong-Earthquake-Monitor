@@ -208,6 +208,52 @@ fun EEWAlertBanner(
                 }
             }
 
+            // Detailed Regions and Tsunami Alert Banners
+            if (alert.detailedAreas.isNotEmpty() || (alert.tsunamiWarning.isNotEmpty() && alert.tsunamiWarning != "津波の心配なし")) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color.Black.copy(alpha = 0.35f))
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    if (alert.detailedAreas.isNotEmpty()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "警戒地域: ",
+                                color = Color.Yellow,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = alert.detailedAreas.joinToString("、"),
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                    if (alert.tsunamiWarning.isNotEmpty() && alert.tsunamiWarning != "津波の心配なし") {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "津波警報: ",
+                                color = Color(0xFFFF6B6B),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Text(
+                                text = alert.tsunamiWarning,
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(10.dp))
 
             // Footer: Voice Repeat Button and Action Advisory

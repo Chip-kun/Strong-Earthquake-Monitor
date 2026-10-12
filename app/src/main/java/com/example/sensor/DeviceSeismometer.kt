@@ -15,6 +15,7 @@ import kotlin.math.max
 import kotlin.math.sqrt
 
 data class SeismometerState(
+    val isEnabled: Boolean = true,
     val currentGal: Float = 0f,
     val peakGal: Float = 0f,
     val estimatedShindo: String = "0",
@@ -41,7 +42,24 @@ class DeviceSeismometer(context: Context) : SensorEventListener {
     var onShakeDetected: ((gal: Float, shindo: String) -> Unit)? = null
     private var lastShakeTriggerTime = 0L
 
+    fun setEnabled(enabled: Boolean) {
+        if (enabled) {
+            _state.value = _state.value.copy(isEnabled = true)
+            start()
+        } else {
+            stop()
+            _state.value = _state.value.copy(
+                isEnabled = false,
+                currentGal = 0f,
+                isShaking = false
+            )
+        }
+    }
+
     fun start() {
+        if (!_state.value.isEnabled) {
+            _state.value = _state.value.copy(isEnabled = true)
+        }
         accelerometer?.let {
             sensorManager?.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
         }
@@ -57,7 +75,7 @@ class DeviceSeismometer(context: Context) : SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
-        if (event == null) return
+        if (event == null || !_state.value.isEnabled) return
 
         // High-pass filter to isolate dynamic acceleration from Earth's static gravity
         gravityX = alpha * gravityX + (1 - alpha) * event.values[0]
