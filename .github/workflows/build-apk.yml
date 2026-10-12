@@ -3,6 +3,7 @@ name: Build Android APK
 on:
   push:
     branches: [ "**" ]
+    tags: [ "v*" ]
   pull_request:
     branches: [ "**" ]
   workflow_dispatch:
@@ -11,29 +12,64 @@ jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Restore debug keystore & environment
+        run: |
+          # 1. Restore debug.keystore from base64 if present, or generate one
+          if [ -f debug.keystore.base64 ]; then
+            base64 -d debug.keystore.base64 > debug.keystore
+            echo "Successfully restored debug.keystore from base64."
+          elif [ ! -f debug.keystore ]; then
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+            echo "Generated new debug.keystore."
+          fi
+
+          # 2. Ensure .env exists for Secrets Gradle plugin
+          if [ ! -f .env ]; then
+            touch .env
+            echo "Created empty .env file."
+          fi
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon --no-configuration-cache --stacktrace
+
+      - name: Prepare APK outputs
+        run: |
+          mkdir -p output-apks
+          cp app/build/outputs/apk/debug/app-debug.apk output-apks/KyoshinMonitor-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk output-apks/app-debug.apk
+          ls -lh output-apks/
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kyoshin-monitor-app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: KyoshinMonitor-APK
+          path: output-apks/*.apk
           retention-days: 30
+
+      - name: Create GitHub Release on Tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: output-apks/KyoshinMonitor-debug.apk
+          draft: false
+          prerelease: false
+
