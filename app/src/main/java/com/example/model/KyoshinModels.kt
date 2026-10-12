@@ -34,6 +34,55 @@ data class ObservationStation(
         return getShindoColor(realtimeShindo)
     }
 
+    fun getValueForDisplayMode(mode: DisplayMode): Float {
+        return when (mode) {
+            DisplayMode.SHINDO -> realtimeShindo
+            DisplayMode.PGA -> pga
+            DisplayMode.PGV -> pgv
+            DisplayMode.PGD -> pgd
+        }
+    }
+
+    fun getColorForDisplayMode(mode: DisplayMode): Color {
+        val valForMode = getValueForDisplayMode(mode)
+        val equivalentShindo = when (mode) {
+            DisplayMode.SHINDO -> realtimeShindo
+            DisplayMode.PGA -> when {
+                valForMode < 0.8f -> 0f
+                valForMode < 2.5f -> 1f
+                valForMode < 8.0f -> 2f
+                valForMode < 25.0f -> 3f
+                valForMode < 50.0f -> 4f
+                valForMode < 100.0f -> 4.5f
+                valForMode < 250.0f -> 5.0f
+                valForMode < 400.0f -> 5.5f
+                valForMode < 600.0f -> 6.0f
+                else -> 7.0f
+            }
+            DisplayMode.PGV -> when {
+                valForMode < 0.2f -> 0f
+                valForMode < 0.7f -> 1f
+                valForMode < 2.0f -> 2f
+                valForMode < 5.0f -> 3f
+                valForMode < 15.0f -> 4f
+                valForMode < 30.0f -> 5f
+                valForMode < 50.0f -> 5.5f
+                valForMode < 80.0f -> 6.0f
+                else -> 7.0f
+            }
+            DisplayMode.PGD -> when {
+                valForMode < 0.1f -> 0f
+                valForMode < 0.5f -> 1f
+                valForMode < 2.0f -> 2f
+                valForMode < 5.0f -> 3f
+                valForMode < 15.0f -> 4f
+                valForMode < 30.0f -> 5f
+                else -> 6.0f
+            }
+        }
+        return getShindoColor(equivalentShindo)
+    }
+
     fun getFormattedValue(mode: DisplayMode): String {
         return when (mode) {
             DisplayMode.SHINDO -> String.format("%.1f", realtimeShindo.coerceAtLeast(0f))

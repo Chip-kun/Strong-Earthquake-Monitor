@@ -38,6 +38,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.layout.onSizeChanged
 import com.example.location.UserLocation
 import com.example.model.*
 import com.example.model.DisplayMode
@@ -67,6 +69,7 @@ fun KyoshinMapCanvas(
     var panOffsetY by remember { mutableFloatStateOf(0f) }
     var showPrefectureNames by remember { mutableStateOf(true) }
     var localShowStationNames by remember { mutableStateOf(showStationLabels) }
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
 
     val textMeasurer = rememberTextMeasurer()
 
@@ -95,6 +98,7 @@ fun KyoshinMapCanvas(
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
+                .onSizeChanged { canvasSize = it }
                 .testTag("kyoshin_map_canvas")
                 // Pinch to zoom and pan gestures
                 .pointerInput(Unit) {
@@ -224,16 +228,17 @@ fun KyoshinMapCanvas(
                 val sy = finalY + station.mapY * finalH
 
                 if (sx >= -30 && sx <= w + 30 && sy >= -30 && sy <= h + 30) {
-                    val color = station.getIntensityColor()
+                    val color = station.getColorForDisplayMode(displayMode)
+                    val metricVal = station.getValueForDisplayMode(displayMode)
                     val baseRadius = when {
-                        station.realtimeShindo >= 4.0f -> 8.5f
-                        station.realtimeShindo >= 2.0f -> 6.5f
-                        station.realtimeShindo >= 0.5f -> 5.2f
+                        metricVal >= 4.0f -> 8.5f
+                        metricVal >= 2.0f -> 6.5f
+                        metricVal >= 0.5f -> 5.2f
                         else -> 3.6f
                     } * zoomLevel.coerceIn(0.85f, 1.8f)
 
-                    // Outer halo for shaking stations
-                    if (station.realtimeShindo >= 0.8f) {
+                    // Outer halo for active stations
+                    if (metricVal >= 0.8f) {
                         drawCircle(
                             color = color.copy(alpha = 0.4f),
                             radius = baseRadius * 2.5f * pulseScale,
@@ -324,62 +329,77 @@ fun KyoshinMapCanvas(
                 .padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            IconButton(
-                onClick = { zoomLevel = (zoomLevel * 1.35f).coerceAtMost(6.0f) },
+            Box(
                 modifier = Modifier
                     .size(34.dp)
                     .clip(CircleShape)
-                    .background(KyoshinSurface.copy(alpha = 0.9f))
+                    .background(KyoshinSurface.copy(alpha = 0.95f))
                     .border(1.dp, KyoshinCardBorder, CircleShape)
-                    .testTag("zoom_in_button")
+                    .clickable { zoomLevel = (zoomLevel * 1.35f).coerceAtMost(6.0f) }
+                    .testTag("zoom_in_button"),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Add, contentDescription = "ズームイン", tint = Color.White, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Add, contentDescription = "ズームイン", tint = Color.White, modifier = Modifier.size(17.dp))
             }
 
-            IconButton(
-                onClick = { zoomLevel = (zoomLevel / 1.35f).coerceAtLeast(0.7f) },
+            Box(
                 modifier = Modifier
                     .size(34.dp)
                     .clip(CircleShape)
-                    .background(KyoshinSurface.copy(alpha = 0.9f))
+                    .background(KyoshinSurface.copy(alpha = 0.95f))
                     .border(1.dp, KyoshinCardBorder, CircleShape)
-                    .testTag("zoom_out_button")
+                    .clickable { zoomLevel = (zoomLevel / 1.35f).coerceAtLeast(0.7f) }
+                    .testTag("zoom_out_button"),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Remove, contentDescription = "ズームアウト", tint = Color.White, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Remove, contentDescription = "ズームアウト", tint = Color.White, modifier = Modifier.size(17.dp))
             }
 
             if (userLocation != null) {
-                IconButton(
-                    onClick = {
-                        zoomLevel = 2.2f
-                        panOffsetX = 0f
-                        panOffsetY = 0f
-                    },
+                Box(
                     modifier = Modifier
                         .size(34.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF0284C7).copy(alpha = 0.9f))
+                        .background(Color(0xFF0284C7).copy(alpha = 0.95f))
                         .border(1.dp, Color.White, CircleShape)
-                        .testTag("center_user_button")
+                        .clickable {
+                            zoomLevel = 2.5f
+                            val w = canvasSize.width.toFloat()
+                            val h = canvasSize.height.toFloat()
+                            if (w > 0f && h > 0f) {
+                                val canvasAspect = w / h
+                                val baseW: Float = if (canvasAspect > mapAspect) h * mapAspect else w
+                                val baseH: Float = if (canvasAspect > mapAspect) h else w / mapAspect
+                                val finalW = baseW * 2.5f
+                                val finalH = baseH * 2.5f
+                                val userNormX = GeoProjection.toNormX(userLocation.lon)
+                                val userNormY = GeoProjection.toNormY(userLocation.lat)
+                                panOffsetX = finalW * (0.5f - userNormX.toFloat())
+                                panOffsetY = finalH * (0.5f - userNormY.toFloat())
+                            }
+                        }
+                        .testTag("center_user_button"),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.MyLocation, contentDescription = "現在地", tint = Color.White, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.MyLocation, contentDescription = "現在地", tint = Color.White, modifier = Modifier.size(17.dp))
                 }
             }
 
-            IconButton(
-                onClick = {
-                    zoomLevel = 1.0f
-                    panOffsetX = 0f
-                    panOffsetY = 0f
-                },
+            Box(
                 modifier = Modifier
                     .size(34.dp)
                     .clip(CircleShape)
-                    .background(KyoshinSurface.copy(alpha = 0.9f))
+                    .background(KyoshinSurface.copy(alpha = 0.95f))
                     .border(1.dp, KyoshinCardBorder, CircleShape)
-                    .testTag("reset_zoom_button")
+                    .clickable {
+                        zoomLevel = 1.0f
+                        panOffsetX = 0f
+                        panOffsetY = 0f
+                    }
+                    .testTag("reset_zoom_button"),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.RestartAlt, contentDescription = "リセット", tint = Color.White, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.RestartAlt, contentDescription = "リセット", tint = Color.White, modifier = Modifier.size(17.dp))
             }
         }
 
@@ -536,10 +556,10 @@ fun KyoshinMapCanvas(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(text = "リアルタイム震度:", color = Color.Gray, fontSize = 11.sp)
+                        Text(text = "${displayMode.label}:", color = Color.Gray, fontSize = 11.sp)
                         Text(
-                            text = String.format("%.2f", selectedStation.realtimeShindo),
-                            color = selectedStation.getIntensityColor(),
+                            text = selectedStation.getFormattedValue(displayMode),
+                            color = selectedStation.getColorForDisplayMode(displayMode),
                             fontWeight = FontWeight.Black,
                             fontSize = 12.sp
                         )
