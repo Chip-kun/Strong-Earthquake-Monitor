@@ -306,16 +306,24 @@
 
     </main>
 
-    <!-- 導入手順 -->
-    <section class="installation">
-        <div class="steps">
-            <h2 style="color: var(--text-main); font-size: 1.5rem; margin-top: 0;">📦 インストール方法</h2>
+    <!-- インストール手順 -->
+        <div class="guide">
+            <h2>インストール手順</h2>
             <ol>
-                <li>上のボタンから <strong>GitHub Releases</strong> ページにアクセスします。</li>
-                <li>最新バージョン（Latest）の <strong>Assets</strong> 項目を展開します。</li>
-                <li>端末に合ったファイル（Androidの場合は <code>.apk</code> など）を選択してダウンロードします。</li>
-                <li>ファイルを開き、画面の指示に従ってインストールを完了させてください。</li>
+                <li>「Android用 APKをダウンロード」ボタンをタップします。</li>
+                <li>ダウンロード完了後、スマホの通知やファイルマネージャーからファイルを開きます。</li>
+                <li>「インストール」をタップします。</li>
             </ol>
+            <div class="warning">
+                <strong>💡 ご注意</strong><br>
+                Playストアを経由しないため、端末によっては「不明なアプリ」といった警告が出る場合があります。インストールを続行するには、ブラウザの設定で「提供元不明のアプリのインストール」の許可をオンにしてください。
+            </div>
         </div>
-    </section>
+    <!-- ページ全体で禁止する場合 -->
+    <body oncontextmenu="return false;" onselectstart="return false;">
+    </main>
+    <footer>
+        <p>&copy; 2026 Chip-kun. All rights reserved.</p>
+    </footer>
+</body>
 
