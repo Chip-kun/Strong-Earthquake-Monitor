@@ -211,7 +211,6 @@ class KyoshinViewModel(application: Application) : AndroidViewModel(application)
     private var previousEEWCountdown = -1
     private var lastAnnouncedEarthquakeId: String? = null
 
-　　　    // 【214行目から下をすべてこれに置き換え】
     init {
         if (_isSeismometerEnabled.value) {
             deviceSeismometer.start()
