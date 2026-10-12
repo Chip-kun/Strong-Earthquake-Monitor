@@ -38,6 +38,8 @@ fun MySeismometerScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.deviceSeismometer.state.collectAsState()
+    // ViewModelから保存済みのオン/オフ状態をリアルタイムに取得
+    val isEnabled by viewModel.isSeismometerEnabled.collectAsState()
 
     Column(
         modifier = modifier
@@ -51,19 +53,19 @@ fun MySeismometerScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(
-                    text = "マイ地震計（端末加速度計）",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "端末内蔵センサーで揺れをリアルタイム測定",
-                    color = Color(0xFF94A3B8),
-                    fontSize = 12.sp
-                )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "マイ地震計（端末加速度計）", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(text = "端末内蔵センサーで揺れをリアルタイム測定", color = Color(0xFF94A3B8), fontSize = 12.sp)
             }
+
+            // 【追加】オン / オフを切り替えるトグルスイッチ本体
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
+                Switch(
+                    checked = isEnabled,
+                    onCheckedChange = { checked -> viewModel.toggleSeismometer(checked) },
+                    colors = SwitchDefaults.colors(checkedThumbColor = KyoshinPrimary, checkedTrackColor = KyoshinPrimary.copy(alpha = 0.5f))
+                )
+            
 
             IconButton(
                 onClick = { viewModel.deviceSeismometer.resetPeak() },
