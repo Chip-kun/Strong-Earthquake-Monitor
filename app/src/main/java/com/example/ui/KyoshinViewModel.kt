@@ -57,6 +57,13 @@ class KyoshinViewModel(application: Application) : AndroidViewModel(application)
     val voiceAlertManager = VoiceAlertManager(application)
     val deviceSeismometer = DeviceSeismometer(application)
     val locationManager = UserLocationManager(application)
+        // 【追加】設定を端末に保存するための準備
+    private val sharedPreferences = application.getSharedPreferences("kyoshin_settings", Context.MODE_PRIVATE)
+
+    // 【追加】オン/オフ状態を管理する変数（初期値は保存データ、無ければデフォルトはオン）
+    private val _isSeismometerEnabled = MutableStateFlow(sharedPreferences.getBoolean("seismometer_enabled", true))
+    val isSeismometerEnabled: StateFlow<Boolean> = _isSeismometerEnabled.asStateFlow()
+    
 
     private val _currentTab = MutableStateFlow(AppTab.MONITOR)
     val currentTab: StateFlow<AppTab> = _currentTab.asStateFlow()
@@ -204,12 +211,20 @@ class KyoshinViewModel(application: Application) : AndroidViewModel(application)
     private var previousEEWCountdown = -1
     private var lastAnnouncedEarthquakeId: String? = null
 
-    init {
-        // Start device seismometer listener
-        deviceSeismometer.start()
-        deviceSeismometer.onShakeDetected = { gal, shindo ->
-            voiceAlertManager.announceDeviceShake(gal, shindo)
+            // 保存状態が「オン」のときだけ動かす
+        if (_isSeismometerEnabled.value) {
+            deviceSeismometer.start()
+        } else {
+            deviceSeismometer.stop()
         }
+
+        deviceSeismometer.onShakeDetected = { gal, shindo ->
+            // オン状態のときのみ音声通知を鳴らす
+            if (_isSeismometerEnabled.value) {
+                voiceAlertManager.announceDeviceShake(gal, shindo)
+            }
+        }
+
 
         // Live JST Clock ticker
         viewModelScope.launch {
@@ -317,6 +332,19 @@ class KyoshinViewModel(application: Application) : AndroidViewModel(application)
             if (it.id == id) it.copy(isChecked = !it.isChecked) else it
         }
     }
+        
+        // 【追加】画面のスイッチが切り替わったときに呼び出す処理関数
+    fun toggleSeismometer(enabled: Boolean) {
+        _isSeismometerEnabled.value = enabled
+        sharedPreferences.edit().putBoolean("seismometer_enabled", enabled).apply()
+
+        if (enabled) {
+            deviceSeismometer.start()
+        } else {
+            deviceSeismometer.stop()
+            deviceSeismometer.resetPeak() // オフ時は数値をクリア
+        }
+    }
 
     override fun onCleared() {
         super.onCleared()
@@ -324,3 +352,4 @@ class KyoshinViewModel(application: Application) : AndroidViewModel(application)
         voiceAlertManager.destroy()
     }
 }
+
