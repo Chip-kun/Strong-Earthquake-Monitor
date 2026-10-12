@@ -134,3 +134,83 @@ fun getShindoColorByText(text: String): Color {
         else -> Shindo0Color
     }
 }
+
+object GeoProjection {
+    const val MIN_LAT = 23.5
+    const val MAX_LAT = 46.0
+    const val MIN_LON = 122.5
+    const val MAX_LON = 146.5
+
+    // Conformal aspect ratio (width / height)
+    // (MAX_LON - MIN_LON) * cos(35 deg) / (MAX_LAT - MIN_LAT)
+    // 24.0 * 0.819152 / 22.5 = 0.87376
+    const val MAP_ASPECT_RATIO = 0.87376f
+
+    fun toNormX(lon: Double): Float {
+        return ((lon - MIN_LON) / (MAX_LON - MIN_LON)).toFloat().coerceIn(0.01f, 0.99f)
+    }
+
+    fun toNormY(lat: Double): Float {
+        return ((MAX_LAT - lat) / (MAX_LAT - MIN_LAT)).toFloat().coerceIn(0.01f, 0.99f)
+    }
+}
+
+data class PrefectureMarker(
+    val name: String,
+    val shortName: String,
+    val lat: Double,
+    val lon: Double,
+    val mapX: Float = GeoProjection.toNormX(lon),
+    val mapY: Float = GeoProjection.toNormY(lat)
+)
+
+val JAPAN_PREFECTURES: List<PrefectureMarker> = listOf(
+    PrefectureMarker("北海道", "北海道", 43.064, 141.346),
+    PrefectureMarker("青森県", "青森", 40.824, 140.740),
+    PrefectureMarker("岩手県", "岩手", 39.703, 141.152),
+    PrefectureMarker("宮城県", "宮城", 38.268, 140.871),
+    PrefectureMarker("秋田県", "秋田", 39.718, 140.102),
+    PrefectureMarker("山形県", "山形", 38.240, 140.363),
+    PrefectureMarker("福島県", "福島", 37.750, 140.467),
+    PrefectureMarker("茨城県", "茨城", 36.341, 140.446),
+    PrefectureMarker("栃木県", "栃木", 36.565, 139.883),
+    PrefectureMarker("群馬県", "群馬", 36.391, 139.060),
+    PrefectureMarker("埼玉県", "埼玉", 35.856, 139.648),
+    PrefectureMarker("千葉県", "千葉", 35.605, 140.123),
+    PrefectureMarker("東京都", "東京", 35.689, 139.692),
+    PrefectureMarker("神奈川県", "神奈川", 35.447, 139.642),
+    PrefectureMarker("新潟県", "新潟", 37.902, 139.023),
+    PrefectureMarker("富山県", "富山", 36.695, 137.211),
+    PrefectureMarker("石川県", "石川", 36.594, 136.625),
+    PrefectureMarker("福井県", "福井", 36.065, 136.221),
+    PrefectureMarker("山梨県", "山梨", 35.664, 138.568),
+    PrefectureMarker("長野県", "長野", 36.651, 138.181),
+    PrefectureMarker("岐阜県", "岐阜", 35.391, 136.722),
+    PrefectureMarker("静岡県", "静岡", 34.976, 138.383),
+    PrefectureMarker("愛知県", "愛知", 35.180, 136.906),
+    PrefectureMarker("三重県", "三重", 34.730, 136.508),
+    PrefectureMarker("滋賀県", "滋賀", 35.004, 135.868),
+    PrefectureMarker("京都府", "京都", 35.021, 135.755),
+    PrefectureMarker("大阪府", "大阪", 34.686, 135.520),
+    PrefectureMarker("兵庫県", "兵庫", 34.691, 135.183),
+    PrefectureMarker("奈良県", "奈良", 34.685, 135.832),
+    PrefectureMarker("和歌山県", "和歌山", 34.226, 135.167),
+    PrefectureMarker("鳥取県", "鳥取", 35.503, 134.238),
+    PrefectureMarker("島根県", "島根", 35.472, 133.050),
+    PrefectureMarker("岡山県", "岡山", 34.661, 133.935),
+    PrefectureMarker("広島県", "広島", 34.396, 132.459),
+    PrefectureMarker("山口県", "山口", 34.186, 131.470),
+    PrefectureMarker("徳島県", "徳島", 34.065, 134.559),
+    PrefectureMarker("香川県", "香川", 34.340, 134.043),
+    PrefectureMarker("愛媛県", "愛媛", 33.841, 132.766),
+    PrefectureMarker("高知県", "高知", 33.559, 133.531),
+    PrefectureMarker("福岡県", "福岡", 33.606, 130.418),
+    PrefectureMarker("佐賀県", "佐賀", 33.249, 130.298),
+    PrefectureMarker("長崎県", "長崎", 32.744, 129.873),
+    PrefectureMarker("熊本県", "熊本", 32.789, 130.741),
+    PrefectureMarker("大分県", "大分", 33.238, 131.612),
+    PrefectureMarker("宮崎県", "宮崎", 31.911, 131.423),
+    PrefectureMarker("鹿児島県", "鹿児島", 31.560, 130.558),
+    PrefectureMarker("沖縄県", "沖縄", 26.212, 127.680)
+)
+

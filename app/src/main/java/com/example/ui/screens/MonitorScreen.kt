@@ -9,7 +9,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -212,7 +217,7 @@ fun MonitorScreen(
                 displayMode = displayMode,
                 depthMode = depthMode,
                 onMapStyleChanged = { viewModel.setMapStyle(it) },
-                onDisplayModeChanged = { viewModel.repository.setDisplayMode(it) },
+                onDisplayModeChanged = { mode: DisplayMode -> viewModel.repository.setDisplayMode(mode) },
                 onDepthModeChanged = { viewModel.repository.setDepthMode(it) },
                 onStationSelected = { viewModel.repository.selectStation(it) }
             )
