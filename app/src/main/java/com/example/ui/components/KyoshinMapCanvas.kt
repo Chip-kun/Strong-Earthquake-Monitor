@@ -383,24 +383,24 @@ fun KyoshinMapCanvas(
             }
         }
 
-        // Bottom Overlay Floating Control Bars: Mode & Map Layer
-        Row(
+        // Bottom Overlay Floating Control Bar (Sleek & Compact)
+        Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
+                .padding(horizontal = 8.dp, vertical = 6.dp)
         ) {
-            // Mode Selectors (震度 / PGA / PGV)
             Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(KyoshinSurface.copy(alpha = 0.92f))
-                    .border(1.dp, KyoshinCardBorder, RoundedCornerShape(6.dp))
-                    .padding(2.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    .align(Alignment.Center)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF0F172A).copy(alpha = 0.92f))
+                    .border(1.dp, KyoshinCardBorder, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 6.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Display Modes (震度 / PGA / PGV)
                 DisplayMode.entries.forEach { mode ->
                     val isSelected = displayMode == mode
                     Box(
@@ -408,67 +408,6 @@ fun KyoshinMapCanvas(
                             .clip(RoundedCornerShape(4.dp))
                             .background(if (isSelected) KyoshinPrimary else Color.Transparent)
                             .clickable { onDisplayModeChanged(mode) }
-                            .padding(horizontal = 6.dp, vertical = 3.dp)
-                    ) {
-                        Text(
-                            text = mode.label,
-                            color = if (isSelected) Color.Black else Color(0xFF94A3B8),
-                            fontSize = 10.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-                }
-            }
-
-            // Layer & Label Selectors
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(KyoshinSurface.copy(alpha = 0.92f))
-                    .border(1.dp, KyoshinCardBorder, RoundedCornerShape(6.dp))
-                    .padding(2.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                // Prefecture Names Toggle
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(if (showPrefectureNames) Color(0xFF3B82F6).copy(alpha = 0.85f) else Color.Transparent)
-                        .clickable { showPrefectureNames = !showPrefectureNames }
-                        .padding(horizontal = 6.dp, vertical = 3.dp)
-                ) {
-                    Text(
-                        text = "都道府県",
-                        color = if (showPrefectureNames) Color.White else Color(0xFF94A3B8),
-                        fontSize = 10.sp,
-                        fontWeight = if (showPrefectureNames) FontWeight.Bold else FontWeight.Normal
-                    )
-                }
-
-                // Station Names Toggle
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(if (localShowStationNames) Color(0xFF10B981).copy(alpha = 0.85f) else Color.Transparent)
-                        .clickable { localShowStationNames = !localShowStationNames }
-                        .padding(horizontal = 6.dp, vertical = 3.dp)
-                ) {
-                    Text(
-                        text = "観測点",
-                        color = if (localShowStationNames) Color.White else Color(0xFF94A3B8),
-                        fontSize = 10.sp,
-                        fontWeight = if (localShowStationNames) FontWeight.Bold else FontWeight.Normal
-                    )
-                }
-
-                // Depth Mode (地表/地中)
-                DepthMode.entries.forEach { mode ->
-                    val isSelected = depthMode == mode
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(if (isSelected) Color(0xFFF59E0B) else Color.Transparent)
-                            .clickable { onDepthModeChanged(mode) }
                             .padding(horizontal = 5.dp, vertical = 3.dp)
                     ) {
                         Text(
@@ -480,11 +419,59 @@ fun KyoshinMapCanvas(
                     }
                 }
 
+                // Prefecture Names Toggle
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(if (showPrefectureNames) Color(0xFF3B82F6).copy(alpha = 0.85f) else Color.Transparent)
+                        .clickable { showPrefectureNames = !showPrefectureNames }
+                        .padding(horizontal = 5.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = "県名",
+                        color = if (showPrefectureNames) Color.White else Color(0xFF94A3B8),
+                        fontSize = 10.sp
+                    )
+                }
+
+                // Station Names Toggle
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(if (localShowStationNames) Color(0xFF10B981).copy(alpha = 0.85f) else Color.Transparent)
+                        .clickable { localShowStationNames = !localShowStationNames }
+                        .padding(horizontal = 5.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = "観測点",
+                        color = if (localShowStationNames) Color.White else Color(0xFF94A3B8),
+                        fontSize = 10.sp
+                    )
+                }
+
+                // Depth Mode (地表/地中)
+                DepthMode.entries.forEach { mode ->
+                    val isSelected = depthMode == mode
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(if (isSelected) Color(0xFFF59E0B) else Color.Transparent)
+                            .clickable { onDepthModeChanged(mode) }
+                            .padding(horizontal = 4.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = mode.label,
+                            color = if (isSelected) Color.Black else Color(0xFF94A3B8),
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+
                 // Map Style Cycle Button
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(4.dp))
-                        .background(Color(0xFF0284C7).copy(alpha = 0.7f))
+                        .background(Color(0xFF0284C7).copy(alpha = 0.75f))
                         .clickable {
                             val nextStyle = when (mapStyle) {
                                 MapStyle.SATELLITE -> MapStyle.TECTONIC
@@ -493,10 +480,10 @@ fun KyoshinMapCanvas(
                             }
                             onMapStyleChanged(nextStyle)
                         }
-                        .padding(horizontal = 6.dp, vertical = 3.dp)
+                        .padding(horizontal = 5.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        text = mapStyle.label,
+                        text = mapStyle.label.take(2),
                         color = Color.White,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
