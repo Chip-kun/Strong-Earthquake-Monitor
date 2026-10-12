@@ -173,9 +173,6 @@ fun KyoshinMapCanvas(
                 drawTectonicTrenches(finalX, finalY, finalW, finalH, textMeasurer, zoomLevel)
             }
 
-            // 7. Draw Official NIED Watermark Logo in bottom-right corner
-            drawNIEDWatermark(finalX, finalY, finalW, finalH, textMeasurer)
-
             // 8. Draw 47 Prefecture Name Labels
             if (showPrefectureNames) {
                 drawPrefectureLabels(finalX, finalY, finalW, finalH, textMeasurer, zoomLevel)
@@ -729,8 +726,8 @@ private fun DrawScope.drawJapanGeographicLandmass(
 
     val (landColor, coastColor) = when (style) {
         MapStyle.SATELLITE -> Pair(
-            Color(0xFF333333), // Exact NIED Dark Gray (#333333 / #383838)
-            Color(0xFF6B7280)  // Crisp clean gray coastline stroke
+            Color(0xFF2C3038), // Exact NIED Dark Gray landmass
+            Color(0xFF4E5564)  // Crisp clean gray coastline stroke
         )
         MapStyle.TECTONIC -> Pair(
             Color(0xFF282D36),
@@ -802,7 +799,7 @@ private fun DrawScope.drawPrefectureBoundaries(
     val boundaryColor = when (style) {
         MapStyle.RADAR -> Color(0xFF38BDF8).copy(alpha = 0.4f)
         MapStyle.TECTONIC -> Color(0xFF5A6678)
-        MapStyle.SATELLITE -> Color(0xFF525866) // Crisp solid thin gray as in NIED base_map_org_black.png
+        MapStyle.SATELLITE -> Color(0xFF4C5360) // Crisp thin boundary lines matching official NIED basemap
     }
     val boundaryStroke = Stroke(width = 0.9f)
 
