@@ -192,6 +192,19 @@ fun KyoshinMapCanvas(
                     zoom = zoomLevel,
                     pulse = pulseScale
                 )
+
+                if (activeEEW.tsunamiWarning != "津_波の心配なし" && activeEEW.tsunamiWarning != "津波の心配なし" && activeEEW.tsunamiWarning.isNotEmpty()) {
+                    drawTsunamiOverlay(
+                        finalX = finalX,
+                        finalY = finalY,
+                        finalW = finalW,
+                        finalH = finalH,
+                        alert = activeEEW,
+                        zoom = zoomLevel,
+                        pulse = pulseScale,
+                        textMeasurer = textMeasurer
+                    )
+                }
             }
 
             // 8. Draw User Location Marker
@@ -1092,6 +1105,73 @@ private fun DrawScope.drawEEWWaves(
         color = Color.White,
         radius = 4.5f,
         center = Offset(epiX, epiY)
+    )
+}
+
+private fun DrawScope.drawTsunamiOverlay(
+    finalX: Float,
+    finalY: Float,
+    finalW: Float,
+    finalH: Float,
+    alert: EEWAlert,
+    zoom: Float,
+    pulse: Float,
+    textMeasurer: TextMeasurer
+) {
+    val epiNormX = GeoProjection.toNormX(alert.lon)
+    val epiNormY = GeoProjection.toNormY(alert.lat)
+    val epiX = finalX + epiNormX * finalW
+    val epiY = finalY + epiNormY * finalH
+
+    val kmToPixel = (finalW / 2184f)
+    val tsunamiRadiusPx = (alert.sWaveRadiusKm * 1.6f * kmToPixel).coerceAtLeast(35f)
+
+    // Tsunami wavefront concentric rings (Cyan/Blue wave rings)
+    drawCircle(
+        color = Color(0xFF0284C7).copy(alpha = 0.22f),
+        radius = tsunamiRadiusPx * pulse,
+        center = Offset(epiX, epiY)
+    )
+    drawCircle(
+        color = Color(0xFF38BDF8).copy(alpha = 0.85f),
+        radius = tsunamiRadiusPx * pulse,
+        center = Offset(epiX, epiY),
+        style = Stroke(width = 3.0f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(16f, 8f)))
+    )
+
+    if (tsunamiRadiusPx > 40f) {
+        drawCircle(
+            color = Color(0xFF0EA5E9).copy(alpha = 0.35f),
+            radius = (tsunamiRadiusPx * 0.55f),
+            center = Offset(epiX, epiY),
+            style = Stroke(width = 2.0f)
+        )
+    }
+
+    val badgeText = "🌊 ${alert.tsunamiWarning}"
+    val textLayout = textMeasurer.measure(
+        badgeText,
+        TextStyle(color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+    )
+    val boxWidth = textLayout.size.width + 18f
+    val boxHeight = textLayout.size.height + 10f
+    val boxLeft = (epiX - boxWidth / 2f).coerceIn(finalX + 8f, finalX + finalW - boxWidth - 8f)
+    val boxTop = (epiY - tsunamiRadiusPx - boxHeight - 12f).coerceAtLeast(finalY + 8f)
+
+    drawRect(
+        color = Color(0xFF0369A1).copy(alpha = 0.92f),
+        topLeft = Offset(boxLeft, boxTop),
+        size = androidx.compose.ui.geometry.Size(boxWidth, boxHeight)
+    )
+    drawRect(
+        color = Color(0xFF38BDF8),
+        topLeft = Offset(boxLeft, boxTop),
+        size = androidx.compose.ui.geometry.Size(boxWidth, boxHeight),
+        style = Stroke(width = 1.5f)
+    )
+    drawText(
+        textLayoutResult = textLayout,
+        topLeft = Offset(boxLeft + 9f, boxTop + 5f)
     )
 }
 

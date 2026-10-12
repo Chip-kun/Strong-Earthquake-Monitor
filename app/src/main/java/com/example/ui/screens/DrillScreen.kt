@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.audio.VoiceDetailLevel
 import com.example.model.getShindoColorByText
 import com.example.ui.DrillScenario
 import com.example.ui.KyoshinViewModel
@@ -36,6 +37,7 @@ fun DrillScreen(
     val activeEEW by viewModel.repository.activeEEW.collectAsState()
     val isVoiceEnabled by viewModel.voiceAlertManager.isVoiceEnabled.collectAsState()
     val speechRate by viewModel.voiceAlertManager.speechRate.collectAsState()
+    val detailLevel by viewModel.voiceAlertManager.detailLevel.collectAsState()
 
     Column(
         modifier = modifier
@@ -129,6 +131,30 @@ fun DrillScreen(
                         steps = 7,
                         modifier = Modifier.weight(1f)
                     )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = "読み上げ詳細設定", color = Color(0xFFCBD5E1), fontSize = 12.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    VoiceDetailLevel.values().forEach { level ->
+                        val selected = detailLevel == level
+                        FilterChip(
+                            selected = selected,
+                            onClick = { viewModel.voiceAlertManager.setDetailLevel(level) },
+                            label = { Text(level.label.substringBefore("（"), fontSize = 10.sp) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = KyoshinPrimary,
+                                selectedLabelColor = Color.White,
+                                containerColor = Color(0xFF1E293B),
+                                labelColor = Color(0xFF94A3B8)
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }

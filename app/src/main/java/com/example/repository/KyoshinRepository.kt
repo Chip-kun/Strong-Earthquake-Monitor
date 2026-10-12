@@ -114,6 +114,29 @@ class KyoshinRepository(
                 if (items.isNotEmpty()) {
                     _earthquakes.value = items
                     Log.i(tag, "Fetched ${items.size} earthquakes from P2P API")
+
+                    val latest = items.firstOrNull()
+                    if (latest != null && latest.tsunamiInfo != "津波の心配なし" && _activeEEW.value == null) {
+                        val tsunamiAlert = EEWAlert(
+                            id = latest.id,
+                            reportNum = 1,
+                            isFinal = true,
+                            isWarning = true,
+                            hypocenter = latest.hypocenter,
+                            lat = latest.lat,
+                            lon = latest.lon,
+                            depthKm = latest.depthKm,
+                            magnitude = latest.magnitude.toFloat(),
+                            maxShindo = latest.maxScale,
+                            originTimeMillis = System.currentTimeMillis() - 60000,
+                            sWaveRadiusKm = 180f,
+                            countdownSeconds = 0,
+                            isActive = true,
+                            isDrill = false,
+                            tsunamiWarning = latest.tsunamiInfo
+                        )
+                        _activeEEW.value = tsunamiAlert
+                    }
                 } else {
                     loadFallbackEarthquakes()
                 }
