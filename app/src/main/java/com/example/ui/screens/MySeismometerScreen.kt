@@ -58,26 +58,27 @@ fun MySeismometerScreen(
                 Text(text = "端末内蔵センサーで揺れをリアルタイム測定", color = Color(0xFF94A3B8), fontSize = 12.sp)
             }
 
-            // 【追加】オン / オフを切り替えるトグルスイッチ本体
+            // オン / オフを切り替えるトグルスイッチ本体
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
                 Switch(
                     checked = isEnabled,
                     onCheckedChange = { checked -> viewModel.toggleSeismometer(checked) },
                     colors = SwitchDefaults.colors(checkedThumbColor = KyoshinPrimary, checkedTrackColor = KyoshinPrimary.copy(alpha = 0.5f))
                 )
-            
+            }
 
             IconButton(
                 onClick = { viewModel.deviceSeismometer.resetPeak() },
+                enabled = isEnabled,
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(Color(0xFF1E293B))
+                    .background(if (isEnabled) Color(0xFF1E293B) else Color(0xFF111827))
                     .testTag("reset_peak_button")
             ) {
                 Icon(
                     imageVector = Icons.Default.RestartAlt,
                     contentDescription = "最大値リセット",
-                    tint = KyoshinPrimary
+                    tint = if (isEnabled) KyoshinPrimary else Color(0xFF475569)
                 )
             }
         }
