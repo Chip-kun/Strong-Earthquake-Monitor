@@ -174,10 +174,10 @@
 
         .app-screenshot {
             width: 100%;
-            max-width: 280px; /* スマホ画面が一番綺麗に見える幅 */
+            max-width: 280px;
             height: auto;
             border: 4px solid var(--border-color);
-            border-radius: 20px; /* スマホの角丸を表現 */
+            border-radius: 20px;
             box-shadow: 0 12px 35px rgba(0,0,0,0.6);
             background-color: #000;
         }
@@ -217,7 +217,7 @@
             color: #8b949e;
         }
 
-        /* レスポンシブ（スマホ表示では縦並びに統一） */
+        /* レスポンシブ */
         @media (max-width: 768px) {
             .feature-item, .feature-item:nth-child(even) {
                 flex-direction: column;
@@ -233,7 +233,7 @@
     <header class="hero">
         <div class="app-badge-live">LIVE MONITOR</div>
         <h1>強震モニター速報</h1>
-        <p>全国のリアルタイム震度・波形モニターから、端末での加速度測定、ワンタップ安否連絡まで網羅したオープンソースの次世代防災アプリ。</p>
+        <p>全国のリアルタイム震度・波形モニターから、各種シミュレーター、安否連絡まで網羅したオープンソースの次世代防災アプリ。</p>
         
         <!-- GitHub誘導エリア -->
         <div class="github-zone">
@@ -247,53 +247,60 @@
 
     <!-- 機能紹介 -->
     <main class="container">
-        <h2 class="section-title">主な機能</h2>
+        <h2 class="section-title">充実の防犯・防災機能</h2>
         
         <!-- 機能1 -->
         <div class="feature-item">
             <div class="feature-text">
                 <h3>🗺️ リアルタイム強震モニタ</h3>
-                <p>地表・地中の微細な震度データをマップ上に可視化。100Hzサンプリングのリアルタイム波形モニター（EW/NS/UD）により、最寄りの揺れの推移を克明に描画します。</p>
+                <p>地表・地中の微細な震度データを日本地図上にリアルタイム可視化。最寄りのリアルタイム波形モニター（EW/NS/UD）により、100Hzサンプリングの細かな揺れの推移を克明に描画します。</p>
             </div>
             <div class="feature-media">
-                <!-- ★ここに画像のURLまたはパスを入れる -->
-                <img class="app-screenshot" src="https://placeholder.com" alt="強震モニタ画面のスクリーンショット">
+                <img class="app-screenshot" src="img/screenshot_kmoni.png" alt="強震モニタ画面">
             </div>
         </div>
         
         <!-- 機能2 -->
         <div class="feature-item">
             <div class="feature-text">
-                <h3>📊 確かな地震情報・履歴</h3>
-                <p>各地で発生した過去の地震履歴を、発生日時、規模（M）、深さとともに一覧化。津波の心配の有無を即座に知らせる通知設計で、安心をサポートします。</p>
+                <h3>📊 地震情報・履歴一覧</h3>
+                <p>気象庁やP2P地震情報のシステムと連携し、各地で発生した地震履歴を素早くリストアップ。震度、規模（M）、深さ、そして最も重要な「津波の心配の有無」を明瞭に伝えます。</p>
             </div>
             <div class="feature-media">
-                <!-- ★ここに画像のURLまたはパスを入れる -->
-                <img class="app-screenshot" src="https://placeholder.com" alt="地震履歴画面のスクリーンショット">
+                <img class="app-screenshot" src="img/screenshot_history.png" alt="地震履歴画面">
             </div>
         </div>
         
         <!-- 機能3 -->
         <div class="feature-item">
             <div class="feature-text">
-                <h3>📱 マイ地震計（端末加速度計）</h3>
-                <p>デバイスの内蔵センサーを用いて、今いる場所の「瞬間加速度（gal）」と「推定計測震度」を自動計算。家具の転倒目安となるピーク加速度を記録・維持します。</p>
+                <h3>🛡️ 防災マニュアル & 安否連絡</h3>
+                <p>「無事です」などの状況を選ぶだけで、居場所を含んだ連絡用テキストを即座に生成し共有可能。屋内・自動車運転中など、災害時の状況に応じた確実な初動行動指針も常備しています。</p>
             </div>
             <div class="feature-media">
-                <!-- ★ここに画像のURLまたはパスを入れる -->
-                <img class="app-screenshot" src="https://placeholder.com" alt="マイ地震計画面のスクリーンショット">
+                <img class="app-screenshot" src="img/screenshot_manual.png" alt="防災マニュアル画面">
             </div>
         </div>
-        
+
         <!-- 機能4 -->
         <div class="feature-item">
             <div class="feature-text">
-                <h3>🛡️ ワンタップ安否連絡</h3>
-                <p>状況を選ぶだけで、現在地付きの安否テキストを瞬時にクリップボードへ生成。家庭、学校、職場、運転中など、災害時の初動対応マニュアルも網羅しています。</p>
+                <h3>🔔 緊急地震速報 訓練シミュレーター</h3>
+                <p>首都直下地震や南海トラフ巨大地震など、様々な災害シナリオを想定したリアルな発令シミュレーション機能を搭載。実際の警報音や音声カウントダウン、波形伝播を疑似体験し、日頃の備えに活かせます。</p>
             </div>
             <div class="feature-media">
-                <!-- ★ここに画像のURLまたはパスを入れる -->
-                <img class="app-screenshot" src="https://placeholder.com" alt="防災マニュアル画面のスクリーンショット">
+                <img class="app-screenshot" src="img/screenshot_training.png" alt="訓練シミュレーター画面">
+            </div>
+        </div>
+        
+        <!-- 機能5 -->
+        <div class="feature-item">
+            <div class="feature-text">
+                <h3>📱 マイ地震計（端末加速度計）</h3>
+                <p>デバイスに内蔵されている高精度センサーを使用し、今いるその場所の「瞬間加速度（gal）」と「推定計測震度」をリアルタイム測定。家具の転倒目安となるピーク加速度もしっかりホールド記録します。</p>
+            </div>
+            <div class="feature-media">
+                <img class="app-screenshot" src="img/screenshot_sensor.png" alt="マイ地震計画面">
             </div>
         </div>
 
@@ -314,4 +321,3 @@
 
     <!-- フッター -->
     <footer>
-        <p>&copy; 2026 強震モニター速報 開発チーム. Powered by Open Source.</p>
