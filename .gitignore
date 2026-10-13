@@ -15,4 +15,7 @@
 .cxx
 local.properties
 .env
+*.apk
+*.aab
+.build-outputs/
 

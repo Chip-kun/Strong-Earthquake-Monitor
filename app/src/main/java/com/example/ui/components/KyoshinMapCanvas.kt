@@ -166,8 +166,8 @@ fun KyoshinMapCanvas(
             // 3. Draw Accurate Geographic Japan Coastline & Landmass (NIED dark gray)
             drawJapanGeographicLandmass(finalX, finalY, finalW, finalH, mapStyle)
 
-            // 4. Draw Okinawa Inset Box (沖縄枠線)
-            drawOkinawaInsetBox(finalX, finalY, finalW, finalH)
+            // 4. Draw Topographic Mountain Relief (Shaded mountain spines)
+            drawTopographicRelief(finalX, finalY, finalW, finalH, mapStyle)
 
             // 5. Draw 47 Prefecture Boundaries (県境)
             drawPrefectureBoundaries(finalX, finalY, finalW, finalH, mapStyle)
@@ -585,11 +585,20 @@ fun KyoshinMapCanvas(
 
 private fun DrawScope.drawOceanBackground(w: Float, h: Float, style: MapStyle) {
     val oceanColor = when (style) {
-        MapStyle.SATELLITE -> Color(0xFF000000) // Pure solid pitch black, exact replica of NIED base_map_org_black.png
-        MapStyle.TECTONIC -> Color(0xFF04070D)
-        MapStyle.RADAR -> Color(0xFF060B14)
+        MapStyle.SATELLITE -> Color(0xFF000000) // Pure solid pitch black matching official NIED base map (base_map_black.png)
+        MapStyle.TECTONIC -> Color(0xFF03060B)
+        MapStyle.RADAR -> Color(0xFF050B14)
     }
     drawRect(color = oceanColor, size = size)
+
+    if (style != MapStyle.RADAR) {
+        // Subtle deep sea bathymetric ambient shading
+        drawCircle(
+            color = Color(0xFF081426).copy(alpha = 0.14f),
+            radius = maxOf(w, h) * 0.85f,
+            center = Offset(w * 0.55f, h * 0.45f)
+        )
+    }
 }
 
 private fun DrawScope.drawMapGrid(w: Float, h: Float, style: MapStyle) {
@@ -605,31 +614,6 @@ private fun DrawScope.drawMapGrid(w: Float, h: Float, style: MapStyle) {
         drawLine(gridColor, Offset(0f, y), Offset(w, y), strokeWidth = 1f)
         y += step
     }
-}
-
-// -------------------------------------------------------------
-// Okinawa Inset Frame (沖縄枠線) - As in NIED base_map_org_black.png
-// -------------------------------------------------------------
-private fun DrawScope.drawOkinawaInsetBox(
-    finalX: Float,
-    finalY: Float,
-    finalW: Float,
-    finalH: Float
-) {
-    // Exact proportion lines dividing Okinawa region in NIED base map
-    val p1 = Offset(finalX, finalY + finalH * 0.535f)
-    val p2 = Offset(finalX + finalW * 0.312f, finalY + finalH * 0.535f)
-    val p3 = Offset(finalX + finalW * 0.490f, finalY + finalH * 0.125f)
-    val p4 = Offset(finalX + finalW * 0.490f, finalY)
-
-    val framePath = Path().apply {
-        moveTo(p1.x, p1.y)
-        lineTo(p2.x, p2.y)
-        lineTo(p3.x, p3.y)
-        lineTo(p4.x, p4.y)
-    }
-
-    drawPath(framePath, color = Color(0xFF6B7280), style = Stroke(width = 1.3f))
 }
 
 // -------------------------------------------------------------
@@ -720,74 +704,120 @@ private fun DrawScope.drawJapanGeographicLandmass(
     fun toScreenX(lon: Double): Float = finalX + GeoProjection.toNormX(lon) * finalW
     fun toScreenY(lat: Double): Float = finalY + GeoProjection.toNormY(lat) * finalH
 
-    fun createPath(points: List<Pair<Double, Double>>): Path {
-        val path = Path()
-        points.forEachIndexed { index, (lat, lon) ->
-            val px = toScreenX(lon)
-            val py = toScreenY(lat)
-            if (index == 0) path.moveTo(px, py) else path.lineTo(px, py)
-        }
-        path.close()
-        return path
-    }
-
-    val (landColor, coastColor) = when (style) {
-        MapStyle.SATELLITE -> Pair(
-            Color(0xFF2C3038), // Exact NIED Dark Gray landmass
-            Color(0xFF4E5564)  // Crisp clean gray coastline stroke
+    val (landColor, coastColor, oceanColor) = when (style) {
+        MapStyle.SATELLITE -> Triple(
+            Color(0xFF22262C), // Official NIED base_map_black.png dark charcoal landmass
+            Color(0xFF556070), // Crisp tactical coastline border
+            Color(0xFF000000)  // Pitch black ocean background
         )
-        MapStyle.TECTONIC -> Pair(
-            Color(0xFF282D36),
-            Color(0xFF5A6678)
+        MapStyle.TECTONIC -> Triple(
+            Color(0xFF252B35),
+            Color(0xFF5E6D82),
+            Color(0xFF03060B)
         )
-        MapStyle.RADAR -> Pair(
-            Color(0xFF1E2836),
-            Color(0xFF38BDF8)
+        MapStyle.RADAR -> Triple(
+            Color(0xFF162230),
+            Color(0xFF38BDF8),
+            Color(0xFF050B14)
         )
     }
 
-    // 1. Hokkaido
-    val hokkaidoPath = createPath(HOKKAIDO_COAST)
-    drawPath(hokkaidoPath, color = landColor)
-    drawPath(hokkaidoPath, color = coastColor, style = Stroke(width = 1.3f))
+    val coastStroke = Stroke(width = if (style == MapStyle.RADAR) 1.5f else 1.2f)
 
-    // 2. Honshu
-    val honshuPath = createPath(HONSHU_COAST)
-    drawPath(honshuPath, color = landColor)
-    drawPath(honshuPath, color = coastColor, style = Stroke(width = 1.3f))
+    // Helper to draw a landmass polygon with smooth Catmull-Rom spline curves
+    fun drawSmoothIsland(points: List<Pair<Double, Double>>, tension: Float = 0.5f) {
+        val path = JapanMapGeometry.createSmoothPath(
+            points = points,
+            toScreenX = ::toScreenX,
+            toScreenY = ::toScreenY,
+            closed = true,
+            tension = tension
+        )
+        drawPath(path, color = landColor)
+        drawPath(path, color = coastColor, style = coastStroke)
+    }
 
-    // 3. Shikoku
-    val shikokuPath = createPath(SHIKOKU_COAST)
-    drawPath(shikokuPath, color = landColor)
-    drawPath(shikokuPath, color = coastColor, style = Stroke(width = 1.3f))
+    // 1. Four Main Islands (Hokkaido, Honshu, Shikoku, Kyushu)
+    drawSmoothIsland(JapanMapGeometry.HOKKAIDO_COAST, tension = 0.45f)
+    drawSmoothIsland(JapanMapGeometry.HONSHU_COAST, tension = 0.45f)
+    drawSmoothIsland(JapanMapGeometry.SHIKOKU_COAST, tension = 0.45f)
+    drawSmoothIsland(JapanMapGeometry.KYUSHU_COAST, tension = 0.45f)
 
-    // 4. Kyushu
-    val kyushuPath = createPath(KYUSHU_COAST)
-    drawPath(kyushuPath, color = landColor)
-    drawPath(kyushuPath, color = coastColor, style = Stroke(width = 1.3f))
+    // 2. Prominent Offshore Islands (淡路島, 佐渡島, 対馬, 壱岐, 五島, 隠岐, 伊豆諸島, 屋久島, 種子島, 奄美, 沖縄, 先島, 北方領土)
+    drawSmoothIsland(JapanMapGeometry.AWAJI_COAST)        // Awaji Island (Seto Inland Sea)
+    drawSmoothIsland(JapanMapGeometry.SADO_COAST)         // Sado Island (Niigata)
+    drawSmoothIsland(JapanMapGeometry.TSUSHIMA_COAST)     // Tsushima
+    drawSmoothIsland(JapanMapGeometry.IKI_COAST)          // Iki
+    drawSmoothIsland(JapanMapGeometry.GOTO_FUKUE_COAST)   // Goto Fukue
+    drawSmoothIsland(JapanMapGeometry.GOTO_NAKADORI_COAST)
+    drawSmoothIsland(JapanMapGeometry.OKI_DOGO_COAST)     // Oki Islands
+    drawSmoothIsland(JapanMapGeometry.IZU_OSHIMA_COAST)   // Izu Islands
+    drawSmoothIsland(JapanMapGeometry.IZU_NIIJIMA_COAST)
+    drawSmoothIsland(JapanMapGeometry.IZU_KOZUSHIMA_COAST)
+    drawSmoothIsland(JapanMapGeometry.IZU_MIYAKE_COAST)
+    drawSmoothIsland(JapanMapGeometry.IZU_HACHIJO_COAST)
+    drawSmoothIsland(JapanMapGeometry.TANEGASHIMA_COAST)  // Tanegashima
+    drawSmoothIsland(JapanMapGeometry.YAKUSHIMA_COAST)    // Yakushima
+    drawSmoothIsland(JapanMapGeometry.AMAMI_COAST)        // Amami Oshima
+    drawSmoothIsland(JapanMapGeometry.TOKUNOSHIMA_COAST)  // Tokunoshima
+    drawSmoothIsland(JapanMapGeometry.OKINAWA_COAST)      // Okinawa Main Island
+    drawSmoothIsland(JapanMapGeometry.MIYAKO_COAST)       // Miyako
+    drawSmoothIsland(JapanMapGeometry.ISHIGAKI_COAST)     // Ishigaki
+    drawSmoothIsland(JapanMapGeometry.IRIOMOTE_COAST)     // Iriomote
+    drawSmoothIsland(JapanMapGeometry.KUNASHIRI_COAST)    // Northern Territories
+    drawSmoothIsland(JapanMapGeometry.SHIKOTAN_COAST)
+    drawSmoothIsland(JapanMapGeometry.RISHIRI_COAST)      // Rishiri
+    drawSmoothIsland(JapanMapGeometry.REBUN_COAST)        // Rebun
+    drawSmoothIsland(JapanMapGeometry.OKUSHIRI_COAST)     // Okushiri
 
-    // 5. Okinawa Main Island
-    val okinawaPath = createPath(OKINAWA_COAST)
-    drawPath(okinawaPath, color = landColor)
-    drawPath(okinawaPath, color = coastColor, style = Stroke(width = 1.2f))
+    // 3. Inland Lakes (Cutouts filled with ocean color and subtle border)
+    val lakeStroke = Stroke(width = 0.9f)
+    fun drawLake(points: List<Pair<Double, Double>>) {
+        val path = JapanMapGeometry.createSmoothPath(
+            points = points,
+            toScreenX = ::toScreenX,
+            toScreenY = ::toScreenY,
+            closed = true,
+            tension = 0.4f
+        )
+        drawPath(path, color = oceanColor)
+        drawPath(path, color = coastColor, style = lakeStroke)
+    }
 
-    // 6. Miyakojima & Ishigakijima
-    val ishigakiPath = createPath(ISHIGAKI_COAST)
-    drawPath(ishigakiPath, color = landColor)
-    drawPath(ishigakiPath, color = coastColor, style = Stroke(width = 1.1f))
+    drawLake(JapanMapGeometry.LAKE_BIWA_COAST)        // Lake Biwa (滋賀・琵琶湖)
+    drawLake(JapanMapGeometry.LAKE_KASUMIGAURA_COAST) // Lake Kasumigaura (茨城・霞ヶ浦)
+    drawLake(JapanMapGeometry.LAKE_SAROMA_COAST)      // Lake Saroma (北海道・サロマ湖)
+    drawLake(JapanMapGeometry.LAKE_INAWASHIRO_COAST)  // Lake Inawashiro (福島・猪苗代湖)
+    drawLake(JapanMapGeometry.LAKE_SHINJI_COAST)      // Lake Shinji/Nakaumi (島根・宍道湖)
+    drawLake(JapanMapGeometry.LAKE_HAMANA_COAST)      // Lake Hamana (静岡・浜名湖)
+    drawLake(JapanMapGeometry.LAKE_TOWADA_COAST)      // Lake Towada (青森・十和田湖)
+}
 
-    val miyakoPath = createPath(MIYAKO_COAST)
-    drawPath(miyakoPath, color = landColor)
-    drawPath(miyakoPath, color = coastColor, style = Stroke(width = 1.1f))
+// -------------------------------------------------------------
+// Topographic Relief (山脈・地形陰影)
+// -------------------------------------------------------------
+private fun DrawScope.drawTopographicRelief(
+    finalX: Float,
+    finalY: Float,
+    finalW: Float,
+    finalH: Float,
+    style: MapStyle
+) {
+    if (style == MapStyle.RADAR) return
+    fun toScreenX(lon: Double): Float = finalX + GeoProjection.toNormX(lon) * finalW
+    fun toScreenY(lat: Double): Float = finalY + GeoProjection.toNormY(lat) * finalH
 
-    // 7. Sado Island & Tsushima
-    val sadoPath = createPath(SADO_COAST)
-    drawPath(sadoPath, color = landColor)
-    drawPath(sadoPath, color = coastColor, style = Stroke(width = 1.1f))
-
-    val tsushimaPath = createPath(TSUSHIMA_COAST)
-    drawPath(tsushimaPath, color = landColor)
-    drawPath(tsushimaPath, color = coastColor, style = Stroke(width = 1.1f))
+    val spineColor = Color(0xFF3E4756).copy(alpha = 0.38f)
+    JapanMapGeometry.MOUNTAIN_SPINES.forEach { ridgePts ->
+        val ridgePath = JapanMapGeometry.createSmoothPath(
+            points = ridgePts,
+            toScreenX = ::toScreenX,
+            toScreenY = ::toScreenY,
+            closed = false,
+            tension = 0.4f
+        )
+        drawPath(ridgePath, color = spineColor, style = Stroke(width = 2.4f, cap = StrokeCap.Round))
+    }
 }
 
 // -------------------------------------------------------------
@@ -806,111 +836,18 @@ private fun DrawScope.drawPrefectureBoundaries(
     val boundaryColor = when (style) {
         MapStyle.RADAR -> Color(0xFF38BDF8).copy(alpha = 0.4f)
         MapStyle.TECTONIC -> Color(0xFF5A6678)
-        MapStyle.SATELLITE -> Color(0xFF4C5360) // Crisp thin boundary lines matching official NIED basemap
+        MapStyle.SATELLITE -> Color(0xFF3C4452) // Crisp thin boundary lines matching official NIED basemap
     }
-    val boundaryStroke = Stroke(width = 0.9f)
+    val boundaryStroke = Stroke(width = 0.85f)
 
-    // Complete realistic boundaries covering all prefectures
-    val dividers = listOf(
-        // Hokkaido subprefecture boundaries
-        listOf(Pair(42.3, 140.0), Pair(42.5, 140.4)),
-        listOf(Pair(42.5, 141.0), Pair(42.9, 141.3)),
-        listOf(Pair(43.2, 142.2), Pair(44.5, 142.4)),
-        listOf(Pair(42.8, 143.0), Pair(43.5, 143.2)),
-        listOf(Pair(43.1, 144.1), Pair(43.6, 144.5)),
-
-        // Tohoku (Aomori, Iwate, Akita, Miyagi, Yamagata, Fukushima)
-        listOf(Pair(40.4, 139.9), Pair(40.35, 140.6)),
-        listOf(Pair(40.35, 140.6), Pair(40.3, 141.7)),
-        listOf(Pair(40.35, 140.6), Pair(39.5, 140.7), Pair(39.0, 140.7)),
-        listOf(Pair(39.15, 139.9), Pair(39.1, 140.5)),
-        listOf(Pair(39.0, 140.7), Pair(38.9, 141.6)),
-        listOf(Pair(39.1, 140.5), Pair(38.3, 140.5), Pair(38.0, 140.5)),
-        listOf(Pair(38.0, 139.7), Pair(37.8, 140.4)),
-        listOf(Pair(38.0, 140.5), Pair(37.85, 140.9)),
-
-        // Kanto & Koshin (Ibaraki, Tochigi, Gunma, Saitama, Chiba, Tokyo, Kanagawa, Yamanashi)
-        listOf(Pair(37.0, 140.4), Pair(36.85, 140.8)),
-        listOf(Pair(37.1, 139.8), Pair(37.0, 140.4)),
-        listOf(Pair(37.0, 140.4), Pair(36.4, 140.2), Pair(36.25, 140.0)),
-        listOf(Pair(37.0, 139.4), Pair(36.5, 139.4), Pair(36.25, 139.6)),
-        listOf(Pair(36.3, 138.8), Pair(36.2, 139.3), Pair(36.15, 139.7)),
-        listOf(Pair(36.15, 139.7), Pair(36.0, 139.9)),
-        listOf(Pair(36.0, 139.9), Pair(35.85, 140.5), Pair(35.75, 140.8)),
-        listOf(Pair(35.85, 139.0), Pair(35.8, 139.6), Pair(35.78, 139.9)),
-        listOf(Pair(35.78, 139.9), Pair(35.65, 139.9)),
-        listOf(Pair(35.65, 139.0), Pair(35.58, 139.4), Pair(35.53, 139.75)),
-        listOf(Pair(35.65, 139.0), Pair(35.4, 139.0)),
-        listOf(Pair(35.4, 139.0), Pair(35.15, 139.0)),
-
-        // Chubu & Hokuriku (Niigata, Toyama, Ishikawa, Fukui, Nagano, Gifu, Shizuoka, Aichi)
-        listOf(Pair(36.95, 137.6), Pair(36.9, 137.7)),
-        listOf(Pair(36.9, 136.9), Pair(36.6, 136.8), Pair(36.35, 136.8)),
-        listOf(Pair(36.3, 136.3), Pair(36.15, 136.5)),
-        listOf(Pair(37.1, 138.2), Pair(36.8, 138.6)),
-        listOf(Pair(36.8, 138.6), Pair(36.8, 139.2)),
-        listOf(Pair(36.8, 138.6), Pair(36.3, 138.6)),
-        listOf(Pair(36.1, 138.4), Pair(35.8, 138.3)),
-        listOf(Pair(35.8, 138.1), Pair(35.3, 137.9)),
-        listOf(Pair(35.3, 137.6), Pair(35.2, 137.6)),
-        listOf(Pair(36.3, 137.4), Pair(35.8, 137.5), Pair(35.4, 137.5)),
-        listOf(Pair(35.2, 137.6), Pair(34.7, 137.5)),
-        listOf(Pair(35.4, 137.0), Pair(35.3, 136.8), Pair(35.1, 136.7)),
-        listOf(Pair(36.0, 136.6), Pair(35.7, 136.4)),
-        listOf(Pair(35.1, 136.7), Pair(35.0, 136.7)),
-        listOf(Pair(35.3, 136.5), Pair(35.1, 136.6)),
-
-        // Kansai (Mie, Shiga, Kyoto, Osaka, Hyogo, Nara, Wakayama)
-        listOf(Pair(35.6, 136.1), Pair(35.5, 135.9)),
-        listOf(Pair(35.5, 135.8), Pair(35.5, 135.4)),
-        listOf(Pair(35.4, 135.9), Pair(35.0, 135.8)),
-        listOf(Pair(35.1, 136.3), Pair(34.9, 136.2)),
-        listOf(Pair(34.9, 136.0), Pair(34.8, 136.0)),
-        listOf(Pair(34.8, 135.8), Pair(34.7, 135.8)),
-        listOf(Pair(34.9, 135.6), Pair(34.8, 135.6)),
-        listOf(Pair(35.4, 135.1), Pair(35.1, 135.2)),
-        listOf(Pair(34.8, 135.4), Pair(34.68, 135.4)),
-        listOf(Pair(34.7, 135.7), Pair(34.45, 135.7)),
-        listOf(Pair(34.4, 135.2), Pair(34.3, 135.5)),
-        listOf(Pair(34.7, 136.1), Pair(34.3, 136.0), Pair(34.0, 135.9)),
-        listOf(Pair(34.3, 135.6), Pair(33.9, 135.7)),
-        listOf(Pair(34.0, 136.0), Pair(33.8, 136.0)),
-
-        // Chugoku (Tottori, Shimane, Okayama, Hiroshima, Yamaguchi)
-        listOf(Pair(35.6, 134.4), Pair(35.3, 134.3)),
-        listOf(Pair(35.3, 134.3), Pair(34.8, 134.3)),
-        listOf(Pair(35.3, 134.2), Pair(35.2, 133.4)),
-        listOf(Pair(35.5, 133.3), Pair(35.2, 133.2)),
-        listOf(Pair(35.1, 133.0), Pair(34.8, 132.3)),
-        listOf(Pair(35.1, 133.4), Pair(34.4, 133.4)),
-        listOf(Pair(34.7, 131.8), Pair(34.5, 131.6)),
-        listOf(Pair(34.4, 132.2), Pair(34.1, 132.2)),
-
-        // Shikoku (Tokushima, Kagawa, Ehime, Kochi)
-        listOf(Pair(34.2, 134.4), Pair(34.1, 133.8)),
-        listOf(Pair(34.0, 133.7), Pair(34.0, 133.5)),
-        listOf(Pair(33.9, 134.2), Pair(33.5, 134.3)),
-        listOf(Pair(33.9, 133.3), Pair(33.5, 132.8), Pair(33.0, 132.5)),
-
-        // Kyushu (Fukuoka, Saga, Nagasaki, Kumamoto, Oita, Miyazaki, Kagoshima)
-        listOf(Pair(33.6, 130.3), Pair(33.3, 130.3)),
-        listOf(Pair(33.3, 129.9), Pair(33.1, 130.1)),
-        listOf(Pair(33.6, 131.0), Pair(33.3, 131.0)),
-        listOf(Pair(33.2, 130.5), Pair(33.1, 130.8)),
-        listOf(Pair(33.2, 131.2), Pair(32.9, 131.2)),
-        listOf(Pair(32.9, 131.6), Pair(32.7, 131.8)),
-        listOf(Pair(32.8, 131.2), Pair(32.2, 131.0)),
-        listOf(Pair(32.2, 130.5), Pair(32.1, 130.7)),
-        listOf(Pair(32.1, 131.0), Pair(31.4, 131.2))
-    )
-
-    dividers.forEach { linePoints ->
-        val path = Path()
-        linePoints.forEachIndexed { i, (lat, lon) ->
-            val px = toScreenX(lon)
-            val py = toScreenY(lat)
-            if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
-        }
+    JapanMapGeometry.PREFECTURE_DIVIDERS.forEach { linePoints ->
+        val path = JapanMapGeometry.createSmoothPath(
+            points = linePoints,
+            toScreenX = ::toScreenX,
+            toScreenY = ::toScreenY,
+            closed = false,
+            tension = 0.35f
+        )
         drawPath(path, color = boundaryColor, style = boundaryStroke)
     }
 }
@@ -990,57 +927,57 @@ private fun DrawScope.drawTectonicTrenches(
     fun toScreenY(lat: Double): Float = finalY + GeoProjection.toNormY(lat) * finalH
 
     // Japan Trench (日本海溝) & Kuril Trench
-    val japanTrenchPath = Path().apply {
-        val points = listOf(
-            Pair(44.0, 148.0),
-            Pair(42.5, 146.0),
-            Pair(41.0, 144.5),
-            Pair(39.5, 144.0),
-            Pair(38.0, 143.5),
-            Pair(36.5, 142.5),
-            Pair(35.5, 142.0)
-        )
-        points.forEachIndexed { i, (lat, lon) ->
-            val px = toScreenX(lon)
-            val py = toScreenY(lat)
-            if (i == 0) moveTo(px, py) else lineTo(px, py)
-        }
-    }
+    val japanTrenchPath = JapanMapGeometry.createSmoothPath(
+        points = JapanMapGeometry.JAPAN_TRENCH,
+        toScreenX = ::toScreenX,
+        toScreenY = ::toScreenY,
+        closed = false,
+        tension = 0.35f
+    )
     drawPath(
         japanTrenchPath,
-        color = Color(0xFF38BDF8).copy(alpha = 0.55f),
-        style = Stroke(width = 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 6f)))
+        color = Color(0xFF38BDF8).copy(alpha = 0.60f),
+        style = Stroke(width = 2.2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 6f)))
     )
 
     // Nankai Trough (南海トラフ)
-    val nankaiTroughPath = Path().apply {
-        val points = listOf(
-            Pair(34.8, 139.2), // Sagami / Suruga
-            Pair(34.0, 137.5),
-            Pair(33.2, 136.0),
-            Pair(32.4, 134.5),
-            Pair(31.8, 133.0),
-            Pair(31.0, 131.5)
-        )
-        points.forEachIndexed { i, (lat, lon) ->
-            val px = toScreenX(lon)
-            val py = toScreenY(lat)
-            if (i == 0) moveTo(px, py) else lineTo(px, py)
-        }
-    }
+    val nankaiTroughPath = JapanMapGeometry.createSmoothPath(
+        points = JapanMapGeometry.NANKAI_TROUGH,
+        toScreenX = ::toScreenX,
+        toScreenY = ::toScreenY,
+        closed = false,
+        tension = 0.35f
+    )
     drawPath(
         nankaiTroughPath,
-        color = Color(0xFFF43F5E).copy(alpha = 0.65f),
+        color = Color(0xFFF43F5E).copy(alpha = 0.70f),
         style = Stroke(width = 2.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 6f)))
+    )
+
+    // Ryukyu Trench (琉球海溝)
+    val ryukyuTrenchPath = JapanMapGeometry.createSmoothPath(
+        points = JapanMapGeometry.RYUKYU_TRENCH,
+        toScreenX = ::toScreenX,
+        toScreenY = ::toScreenY,
+        closed = false,
+        tension = 0.35f
+    )
+    drawPath(
+        ryukyuTrenchPath,
+        color = Color(0xFFF59E0B).copy(alpha = 0.60f),
+        style = Stroke(width = 2.0f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 6f)))
     )
 
     // Draw Trench Labels if zoomed
     if (zoomLevel > 1.1f) {
-        val jtLabel = textMeasurer.measure("日本海溝", TextStyle(color = Color(0xFF38BDF8).copy(alpha = 0.8f), fontSize = 8.sp, fontWeight = FontWeight.Bold))
+        val jtLabel = textMeasurer.measure("日本海溝", TextStyle(color = Color(0xFF38BDF8).copy(alpha = 0.85f), fontSize = 8.sp, fontWeight = FontWeight.Bold))
         drawText(jtLabel, topLeft = Offset(toScreenX(144.0) + 4f, toScreenY(38.5)))
 
-        val ntLabel = textMeasurer.measure("南海トラフ", TextStyle(color = Color(0xFFF43F5E).copy(alpha = 0.85f), fontSize = 8.sp, fontWeight = FontWeight.Bold))
+        val ntLabel = textMeasurer.measure("南海トラフ", TextStyle(color = Color(0xFFF43F5E).copy(alpha = 0.90f), fontSize = 8.sp, fontWeight = FontWeight.Bold))
         drawText(ntLabel, topLeft = Offset(toScreenX(135.5), toScreenY(32.7) + 6f))
+
+        val rtLabel = textMeasurer.measure("琉球海溝", TextStyle(color = Color(0xFFF59E0B).copy(alpha = 0.85f), fontSize = 8.sp, fontWeight = FontWeight.Bold))
+        drawText(rtLabel, topLeft = Offset(toScreenX(128.5) + 4f, toScreenY(26.5)))
     }
 }
 
@@ -1233,231 +1170,3 @@ private fun DrawScope.drawUserLocation(
     )
 }
 
-// -------------------------------------------------------------
-// Real Geographical Coastline Coordinates (Lat, Lon)
-// -------------------------------------------------------------
-
-private val HOKKAIDO_COAST = listOf(
-    Pair(45.52, 141.93), // Cape Soya
-    Pair(45.10, 142.37), // Omu
-    Pair(44.35, 143.35), // Monbetsu
-    Pair(44.02, 144.27), // Abashiri
-    Pair(44.07, 145.28), // Shiretoko Cape
-    Pair(43.70, 145.13), // Rausu
-    Pair(43.33, 145.58), // Cape Nosappu
-    Pair(42.98, 144.38), // Kushiro
-    Pair(42.16, 143.32), // Cape Erimo
-    Pair(42.50, 141.60), // Tomakomai
-    Pair(42.31, 140.97), // Muroran
-    Pair(42.00, 140.70), // Mori
-    Pair(41.77, 140.73), // Hakodate
-    Pair(41.42, 140.09), // Cape Shirakami
-    Pair(42.15, 139.92), // Esashi
-    Pair(42.97, 140.35), // Suttsu
-    Pair(43.33, 140.35), // Cape Shakotan
-    Pair(43.19, 141.00), // Otaru
-    Pair(43.20, 141.35), // Ishikari Bay (Sapporo coast)
-    Pair(43.94, 141.63), // Rumoi
-    Pair(44.86, 141.64), // Teshio
-    Pair(45.41, 141.67)  // Wakkanai
-)
-
-private val HONSHU_COAST = listOf(
-    Pair(41.55, 140.91), // Oma
-    Pair(41.43, 141.47), // Cape Shiriya
-    Pair(40.55, 141.53), // Hachinohe
-    Pair(40.13, 141.82), // Kuji
-    Pair(39.64, 141.95), // Miyako
-    Pair(39.27, 141.89), // Kamaishi
-    Pair(38.97, 141.64), // Kesennuma
-    Pair(38.30, 141.52), // Oshika Peninsula
-    Pair(38.26, 140.95), // Sendai Bay
-    Pair(37.82, 140.96), // Soma
-    Pair(36.95, 140.92), // Iwaki
-    Pair(36.36, 140.60), // Oarai
-    Pair(35.71, 140.86), // Choshi
-    Pair(35.13, 140.31), // Katsuura
-    Pair(34.90, 139.88), // Cape Nojima
-    Pair(35.25, 139.80), // Futtsu
-    Pair(35.60, 140.00), // Chiba
-    Pair(35.62, 139.77), // Tokyo Port
-    Pair(35.44, 139.65), // Yokohama
-    Pair(35.14, 139.61), // Miura
-    Pair(35.29, 139.15), // Odawara
-    Pair(34.90, 139.10), // Ito
-    Pair(34.59, 138.91), // Cape Iro
-    Pair(34.80, 138.75), // Matsuzaki
-    Pair(35.05, 138.52), // Shimizu
-    Pair(34.60, 138.22), // Cape Omaezaki
-    Pair(34.68, 137.58), // Lake Hamana
-    Pair(34.60, 137.16), // Cape Irago
-    Pair(34.80, 137.05), // Mikawa Bay
-    Pair(34.83, 136.90), // Chita Peninsula
-    Pair(35.05, 136.88), // Nagoya Port
-    Pair(34.96, 136.63), // Yokkaichi
-    Pair(34.48, 136.85), // Toba
-    Pair(34.25, 136.35), // Owase
-    Pair(33.72, 135.99), // Shingu
-    Pair(33.43, 135.76), // Cape Shionomisaki
-    Pair(33.68, 135.34), // Shirahama
-    Pair(34.00, 135.12), // Gobo
-    Pair(34.28, 135.13), // Wakayama
-    Pair(34.45, 135.32), // Kansai Airport
-    Pair(34.65, 135.43), // Osaka Port
-    Pair(34.68, 135.19), // Kobe
-    Pair(34.79, 134.68), // Himeji
-    Pair(34.73, 134.18), // Ako
-    Pair(34.50, 133.75), // Kurashiki
-    Pair(34.37, 133.38), // Fukuyama
-    Pair(34.30, 132.80), // Takehara
-    Pair(34.35, 132.45), // Hiroshima Bay
-    Pair(34.18, 132.22), // Iwakuni
-    Pair(33.95, 131.25), // Ube
-    Pair(33.95, 130.93), // Shimonoseki
-    Pair(34.10, 130.90), // Hibikinada
-    Pair(34.42, 131.40), // Hagi
-    Pair(34.68, 131.78), // Masuda
-    Pair(34.90, 132.07), // Hamada
-    Pair(35.40, 132.68), // Izumo
-    Pair(35.53, 133.00), // Matsue
-    Pair(35.53, 133.25), // Sakaiminato
-    Pair(35.50, 134.20), // Tottori Sand Dunes
-    Pair(35.65, 134.70), // Kyotango
-    Pair(35.50, 135.35), // Maizuru
-    Pair(35.75, 136.00), // Tsuruga
-    Pair(35.88, 136.00), // Echizen
-    Pair(36.25, 136.13), // Awara
-    Pair(36.50, 136.60), // Kanazawa
-    Pair(36.85, 136.75), // Hakui
-    Pair(37.40, 136.90), // Wajima
-    Pair(37.52, 137.35), // Suzu
-    Pair(37.05, 137.00), // Nanao Bay
-    Pair(36.85, 137.10), // Himi
-    Pair(36.75, 137.22), // Toyama
-    Pair(36.97, 137.45), // Kurobe
-    Pair(37.04, 137.86), // Itoigawa
-    Pair(37.18, 138.25), // Joetsu
-    Pair(37.38, 138.56), // Kashiwazaki
-    Pair(37.95, 139.05), // Niigata Port
-    Pair(38.23, 139.46), // Murakami
-    Pair(38.74, 139.80), // Tsuruoka
-    Pair(38.93, 139.85), // Sakata
-    Pair(39.20, 139.90), // Kisakata
-    Pair(39.73, 140.05), // Akita
-    Pair(39.88, 139.71), // Oga Peninsula
-    Pair(40.23, 139.99), // Noshiro
-    Pair(40.85, 139.97), // Fukaura
-    Pair(41.13, 140.30), // Cape Tappi
-    Pair(40.83, 140.75), // Aomori Port
-    Pair(41.00, 140.80), // Noheji
-    Pair(41.28, 141.18)  // Mutsu
-)
-
-private val SHIKOKU_COAST = listOf(
-    Pair(34.20, 134.60), // Naruto
-    Pair(33.85, 134.65), // Anan
-    Pair(33.55, 134.30), // Kaiyo
-    Pair(33.25, 134.18), // Cape Muroto
-    Pair(33.50, 133.55), // Kochi
-    Pair(33.25, 133.10), // Tosa-shimizu
-    Pair(32.72, 133.02), // Cape Ashizuri
-    Pair(32.93, 132.72), // Sukumo
-    Pair(33.20, 132.50), // Uwajima
-    Pair(33.45, 132.40), // Yawatahama
-    Pair(33.35, 132.02), // Sadamisaki
-    Pair(33.85, 132.75), // Matsuyama
-    Pair(34.08, 133.00), // Imabari
-    Pair(33.95, 133.30), // Niihama
-    Pair(34.10, 133.65), // Kan-onji
-    Pair(34.32, 133.80), // Marugame
-    Pair(34.35, 134.05), // Takamatsu
-    Pair(34.25, 134.35)  // Sanuki
-)
-
-private val KYUSHU_COAST = listOf(
-    Pair(33.95, 130.95), // Moji
-    Pair(33.65, 131.00), // Yukuhashi
-    Pair(33.60, 131.20), // Nakatsu
-    Pair(33.70, 131.60), // Kunisaki Peninsula
-    Pair(33.30, 131.50), // Beppu Bay
-    Pair(33.25, 131.90), // Saganoseki
-    Pair(32.96, 131.90), // Saiki
-    Pair(32.58, 131.68), // Nobeoka
-    Pair(32.40, 131.65), // Hyuga
-    Pair(31.92, 131.45), // Miyazaki
-    Pair(31.58, 131.40), // Nichinan
-    Pair(31.45, 131.35), // Kushima
-    Pair(31.35, 131.10), // Shibushi Bay
-    Pair(30.99, 130.66), // Cape Sata
-    Pair(31.25, 130.65), // Kagoshima Bay east
-    Pair(31.60, 130.55), // Kagoshima City
-    Pair(31.27, 130.30), // Makurazaki
-    Pair(31.45, 130.15), // Minamisatsuma
-    Pair(31.82, 130.18), // Satsumasendai
-    Pair(32.05, 130.20), // Akune
-    Pair(32.20, 130.38), // Izumi
-    Pair(32.35, 130.50), // Minamata
-    Pair(32.50, 130.60), // Yatsushiro
-    Pair(32.70, 130.60), // Uto Peninsula
-    Pair(32.80, 130.65), // Kumamoto Port
-    Pair(32.95, 130.45), // Tamana
-    Pair(33.05, 130.40), // Omuta
-    Pair(33.15, 130.25), // Kashima
-    Pair(32.75, 130.35), // Shimabara Peninsula
-    Pair(32.60, 130.20), // Kuchinotsu
-    Pair(32.75, 130.05), // Isahaya
-    Pair(32.70, 129.85), // Nagasaki
-    Pair(32.95, 129.70), // Saikai
-    Pair(33.17, 129.70), // Sasebo
-    Pair(33.35, 129.55), // Hirado Strait
-    Pair(33.40, 129.70), // Imari Bay
-    Pair(33.55, 129.90), // Karatsu
-    Pair(33.60, 130.20), // Itoshima
-    Pair(33.60, 130.40), // Hakata Bay
-    Pair(33.80, 130.50), // Munakata
-    Pair(33.90, 130.80)  // Wakamatsu
-)
-
-private val OKINAWA_COAST = listOf(
-    Pair(26.85, 128.25), // Cape Hedo
-    Pair(26.65, 128.10), // Ogimi
-    Pair(26.70, 127.90), // Motobu
-    Pair(26.58, 127.98), // Nago
-    Pair(26.40, 127.80), // Cape Zanpa
-    Pair(26.28, 127.75), // Ginowan
-    Pair(26.21, 127.68), // Naha
-    Pair(26.10, 127.67), // Itoman
-    Pair(26.08, 127.72), // Cape Kyan
-    Pair(26.15, 127.80), // Nanjo
-    Pair(26.30, 127.90), // Katsuren
-    Pair(26.45, 127.90), // Uruma
-    Pair(26.60, 128.15)  // Higashi
-)
-
-private val ISHIGAKI_COAST = listOf(
-    Pair(24.55, 124.30),
-    Pair(24.40, 124.30),
-    Pair(24.32, 124.15),
-    Pair(24.45, 124.10)
-)
-
-private val MIYAKO_COAST = listOf(
-    Pair(24.90, 125.30),
-    Pair(24.75, 125.35),
-    Pair(24.70, 125.25),
-    Pair(24.80, 125.20)
-)
-
-private val SADO_COAST = listOf(
-    Pair(38.30, 138.45),
-    Pair(38.15, 138.55),
-    Pair(37.80, 138.25),
-    Pair(38.00, 138.25)
-)
-
-private val TSUSHIMA_COAST = listOf(
-    Pair(34.65, 129.40),
-    Pair(34.40, 129.35),
-    Pair(34.15, 129.20),
-    Pair(34.35, 129.30)
-)

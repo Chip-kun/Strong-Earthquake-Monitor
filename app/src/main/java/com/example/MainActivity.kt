@@ -34,12 +34,29 @@ import com.example.ui.AppTab
 import com.example.ui.KyoshinViewModel
 import com.example.ui.screens.*
 import com.example.ui.theme.*
+import com.example.worker.EEWBackgroundWorker
+import androidx.work.*
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         KyoshinNotificationManager.initNotificationChannels(this)
+
+        // Enqueue WorkManager for background EEW / Earthquake monitoring
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+        val periodicWork = PeriodicWorkRequestBuilder<EEWBackgroundWorker>(15, TimeUnit.MINUTES)
+            .setConstraints(constraints)
+            .build()
+        WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+            "EEWBackgroundMonitor",
+            ExistingPeriodicWorkPolicy.KEEP,
+            periodicWork
+        )
+
         setContent {
             MyApplicationTheme {
                 KyoshinMainApp()
