@@ -251,15 +251,25 @@ class KyoshinViewModel(application: Application) : AndroidViewModel(application)
             if (entity.isDrill) {
                 append("これは緊急地震速報の訓練記録です。")
             } else if (entity.isWarning) {
-                append("緊急地震速報、警報。")
+                append("緊急地震速報、警報の記録です。")
             } else {
-                append("緊急地震速報。")
+                append("緊急地震速報、予報の記録です。")
             }
-            append("${entity.hypocenter}で地震。")
-            append("推定最大震度${entity.maxShindo}。")
-            append("規模はマグニチュード${entity.magnitude}、深さは${entity.depthKm}キロです。")
+            if (entity.reportNum.isNotEmpty()) {
+                append("${entity.reportNum}。")
+            }
+            if (entity.originTime.isNotEmpty()) {
+                append("発生日時は、${entity.originTime}。")
+            }
+            append("震源地は、${entity.hypocenter}。")
+            append("震源の深さは、約${entity.depthKm}キロメートル。")
+            append("地震の規模、マグニチュードは${entity.magnitude}。")
+            append("推定される最大震度は、震度${entity.maxShindo}です。")
             if (entity.affectedAreas.isNotEmpty()) {
-                append("警戒地域は、${entity.affectedAreas}です。")
+                append("警戒対象地域は、${entity.affectedAreas}です。")
+            }
+            if (entity.isWarning) {
+                append("強い揺れに備え、身の安全を確保してください。")
             }
         }
         viewModelScope.launch {

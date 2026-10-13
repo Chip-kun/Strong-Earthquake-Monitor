@@ -316,27 +316,36 @@ class VoiceAlertManager(private val context: Context) : TextToSpeech.OnInitListe
     fun announceDetailedEarthquakeReport(item: EarthquakeItem) {
         val message = buildString {
             append("気象庁発表の地震情報をお伝えします。")
+            val cleanTime = item.time.replace("-", "年").replace(" ", "日 ").replace(":", "時") + "分"
             append("${item.time}頃、")
             append("${item.hypocenter}を震源とする地震がありました。")
             append("震源の深さは約${item.depthKm}キロメートル、")
             append("地震の規模、マグニチュードは${item.magnitude}と推定されます。")
             append("この地震により、最大震度${item.maxScale}が観測されました。")
 
-            // Breakdown of prefectures and detailed cities
+            // Detailed Breakdown of all observed prefectures and municipal cities
             if (item.intensityPoints.isNotEmpty()) {
                 val grouped = item.intensityPoints.groupBy { it.scale }
-                val maxScalePts = grouped[item.maxScale]
-                if (!maxScalePts.isNullOrEmpty()) {
-                    append("最大震度${item.maxScale}を観測した都道府県は、${maxScalePts.map { it.prefecture }.distinct().take(4).joinToString("、")}です。")
+                // Sort scales from highest to lowest
+                val scaleOrder = listOf("7", "6強", "6弱", "5強", "5弱", "4", "3", "2", "1")
+                val sortedScales = grouped.keys.sortedWith(compareBy { scale ->
+                    val idx = scaleOrder.indexOf(scale)
+                    if (idx >= 0) idx else 99
+                })
 
-                    // Detailed municipalities/cities observing max scale
-                    val allCitiesInMaxScale = maxScalePts.flatMap { it.cities }.distinct()
-                    if (allCitiesInMaxScale.isNotEmpty()) {
-                        append("詳しい観測地域は、${allCitiesInMaxScale.take(6).joinToString("、")}です。")
+                for (scale in sortedScales) {
+                    val pts = grouped[scale] ?: continue
+                    val prefNames = pts.map { it.prefecture }.distinct()
+                    append("震度${scale}を観測した地域は、${prefNames.joinToString("、")}です。")
+
+                    // List detailed cities/municipalities in this intensity bracket
+                    val allCities = pts.flatMap { it.cities }.distinct()
+                    if (allCities.isNotEmpty()) {
+                        append("詳しい観測市町村は、${allCities.take(10).joinToString("、")}です。")
                     }
                 }
             } else if (item.detailedRegions.isNotEmpty()) {
-                append("震度を観測した詳しい地域は、${item.detailedRegions.take(6).joinToString("、")}です。")
+                append("震度を観測した詳しい地域は、${item.detailedRegions.joinToString("、")}です。")
             }
 
             // Tsunami Warning details and immediate action alert
@@ -350,7 +359,7 @@ class VoiceAlertManager(private val context: Context) : TextToSpeech.OnInitListe
                 append("${item.tsunamiInfo}。")
             }
 
-            append("今後の余震活動にも十分ご注意ください。")
+            append("今後の揺れや余震活動にも十分ご注意ください。")
         }
         speak(message, flush = true)
     }
