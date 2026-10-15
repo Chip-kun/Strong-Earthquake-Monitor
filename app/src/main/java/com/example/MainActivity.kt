@@ -34,6 +34,7 @@ import com.example.ui.AppTab
 import com.example.ui.KyoshinViewModel
 import com.example.ui.screens.*
 import com.example.ui.theme.*
+import com.example.service.KyoshinBackgroundService
 import com.example.worker.EEWBackgroundWorker
 import androidx.work.*
 import java.util.concurrent.TimeUnit
@@ -44,7 +45,16 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         KyoshinNotificationManager.initNotificationChannels(this)
 
-        // Enqueue WorkManager for background EEW / Earthquake monitoring
+        // Start 24/7 background foreground service if enabled
+        if (KyoshinBackgroundService.isEnabled(this)) {
+            try {
+                KyoshinBackgroundService.start(this)
+            } catch (e: Exception) {
+                // Ignore in case of platform background restriction
+            }
+        }
+
+        // Enqueue WorkManager as backup periodic safeguard
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
@@ -76,7 +86,15 @@ fun KyoshinMainApp(viewModel: KyoshinViewModel = viewModel()) {
     // Request notification permission on Android 13+ (TIRAMISU)
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
-    ) { _ -> }
+    ) { isGranted ->
+        if (isGranted && KyoshinBackgroundService.isEnabled(context)) {
+            try {
+                KyoshinBackgroundService.start(context)
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

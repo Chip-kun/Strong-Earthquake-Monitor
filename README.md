@@ -21,7 +21,7 @@ Android実機に直接インストールしてご利用いただける最新デ�
 
 | 📲 最新リリース: **v1.0.4** (デバッグ版) | 📷 スマホ用スキャンQRコード |
 | :---: | :---: |
-| <br/>[![Download Kyoshin Monitor APK](https://img.shields.io/badge/📥_APK直接ダウンロード-KyoshinMonitor--debug.apk_(v1.0.4)-00C853?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Chip-kun/Strong-Earthquake-Monitor/releases/download/V1.0.4/KyoshinMonitor-debug.apk)<br/><br/>**[🔗 https://github.com/Chip-kun/Strong-Earthquake-Monitor/releases/download/V1.0.4/KyoshinMonitor-debug.apk](https://github.com/Chip-kun/Strong-Earthquake-Monitor/releases/download/V1.0.4/KyoshinMonitor-debug.apk)**<br/><br/>📁 **ファイル名**: `KyoshinMonitor-debug.apk`<br/>🔖 **バージョン**: `v1.0.4`<br/>🤖 **対応OS**: Android 8.0（API 26）以上<br/>⚡ **主な新機能**: 過去震源地のRoom履歴マッププロット、緊急地震速報音声読み上げ、マイ地震計<br/><br/> | <br/><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https%3A%2F%2Fgithub.com%2FChip-kun%2FStrong-Earthquake-Monitor%2Freleases%2Fdownload%2FV1.0.4%2FKyoshinMonitor-debug.apk" width="180" height="180" alt="APKダウンロード用QRコード" /><br/><sub>スマートフォンのカメラで読み取ってダウンロード</sub><br/><br/> |
+| <br/>[![Download Kyoshin Monitor APK](https://img.shields.io/badge/📥_APK直接ダウンロード-KyoshinMonitor--debug.apk_(v1.0.4)-00C853?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Chip-kun/Strong-Earthquake-Monitor/releases/download/V1.0.4/KyoshinMonitor-debug.apk)<br/><br/>**[🔗 https://github.com/Chip-kun/Strong-Earthquake-Monitor/releases/download/V1.0.4/KyoshinMonitor-debug.apk](https://github.com/Chip-kun/Strong-Earthquake-Monitor/releases/download/V1.0.4/KyoshinMonitor-debug.apk)**<br/><br/>📁 **ファイル名**: `KyoshinMonitor-debug.apk`<br/>🔖 **バージョン**: `v1.0.4`<br/>🤖 **対応OS**: Android 8.0（API 26）以上<br/>⚡ **主な新機能**: 過去震源地Room履歴マップ、常駐バックグラウンド地震監視サービス（アプリ終了後も通知）、読み上げ速度微調整＆即時テスト発声<br/><br/> | <br/><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https%3A%2F%2Fgithub.com%2FChip-kun%2FStrong-Earthquake-Monitor%2Freleases%2Fdownload%2FV1.0.4%2FKyoshinMonitor-debug.apk" width="180" height="180" alt="APKダウンロード用QRコード" /><br/><sub>スマートフォンのカメラで読み取ってダウンロード</sub><br/><br/> |
 
 </div>
 
@@ -42,7 +42,13 @@ Android実機に直接インストールしてご利用いただける最新デ�
 
 ## 🌟 主な機能
 
-### 1. リアルタイム強震モニタ (`#kmoni`)
+### 1. 24時間 常駐バックグラウンド監視 (`Foreground Service`)
+- **アプリ終了時・画面スリープ時も確実に通知**: Android Foreground Serviceを採用し、アプリを閉じた状態でも24時間リアルタイムに気象庁・P2P地震速報を監視。
+- **高優先度ヘッズアップ通知**: 地震発生や緊急地震速報の検知時に即座に大音量チャイム・バイブレーション・ヘッズアップ通知を発令。
+- **音声自動読み上げ**: 画面を開いていなくても、設定した読み上げ速度で震源地や最大震度を音声アナウンス。
+- **端末再起動後の自動復旧**: 端末の再起動時にも自動的に監視サービスが立ち上がります。
+
+### 2. リアルタイム強震モニタ (`#kmoni`)
 - 防災科学技術研究所（NIED）の強震モニタ画像をリアルタイムに取得・表示。
 - リアルタイムアニメーションや画像更新により、日本全国の揺れの伝播状況を視覚的に把握できます。
 

@@ -44,16 +44,24 @@ class VoiceAlertManager(private val context: Context) : TextToSpeech.OnInitListe
         }
     }
 
-    private val _isVoiceEnabled = MutableStateFlow(true)
+    private val prefs = context.getSharedPreferences("voice_alert_prefs", Context.MODE_PRIVATE)
+
+    private val _isVoiceEnabled = MutableStateFlow(prefs.getBoolean("voice_enabled", true))
     val isVoiceEnabled: StateFlow<Boolean> = _isVoiceEnabled.asStateFlow()
 
-    private val _isSoundEnabled = MutableStateFlow(true)
+    private val _isSoundEnabled = MutableStateFlow(prefs.getBoolean("sound_enabled", true))
     val isSoundEnabled: StateFlow<Boolean> = _isSoundEnabled.asStateFlow()
 
-    private val _speechRate = MutableStateFlow(1.15f)
+    private val _speechRate = MutableStateFlow(prefs.getFloat("speech_rate", 1.15f))
     val speechRate: StateFlow<Float> = _speechRate.asStateFlow()
 
-    private val _detailLevel = MutableStateFlow(VoiceDetailLevel.DETAILED)
+    private val _detailLevel = MutableStateFlow(
+        try {
+            VoiceDetailLevel.valueOf(prefs.getString("detail_level", VoiceDetailLevel.DETAILED.name) ?: VoiceDetailLevel.DETAILED.name)
+        } catch (e: Exception) {
+            VoiceDetailLevel.DETAILED
+        }
+    )
     val detailLevel: StateFlow<VoiceDetailLevel> = _detailLevel.asStateFlow()
 
     init {
@@ -72,7 +80,7 @@ class VoiceAlertManager(private val context: Context) : TextToSpeech.OnInitListe
             }
             tts?.setSpeechRate(_speechRate.value)
             isTtsReady = true
-            Log.i(tag, "TextToSpeech successfully initialized")
+            Log.i(tag, "TextToSpeech successfully initialized with rate=${_speechRate.value}")
         } else {
             Log.e(tag, "TextToSpeech initialization failed: $status")
         }
@@ -80,6 +88,7 @@ class VoiceAlertManager(private val context: Context) : TextToSpeech.OnInitListe
 
     fun setVoiceEnabled(enabled: Boolean) {
         _isVoiceEnabled.value = enabled
+        prefs.edit().putBoolean("voice_enabled", enabled).apply()
         if (!enabled) {
             tts?.stop()
         }
@@ -87,19 +96,42 @@ class VoiceAlertManager(private val context: Context) : TextToSpeech.OnInitListe
 
     fun setSoundEnabled(enabled: Boolean) {
         _isSoundEnabled.value = enabled
+        prefs.edit().putBoolean("sound_enabled", enabled).apply()
     }
 
     fun setSpeechRate(rate: Float) {
-        _speechRate.value = rate
-        tts?.setSpeechRate(rate)
+        val clamped = rate.coerceIn(0.5f, 2.5f)
+        _speechRate.value = clamped
+        prefs.edit().putFloat("speech_rate", clamped).apply()
+        tts?.setSpeechRate(clamped)
+        Log.i(tag, "setSpeechRate updated: $clamped (isTtsReady=$isTtsReady)")
     }
 
     fun setDetailLevel(level: VoiceDetailLevel) {
         _detailLevel.value = level
+        prefs.edit().putString("detail_level", level.name).apply()
+    }
+
+    fun testSpeech(customRate: Float? = null) {
+        if (customRate != null) {
+            setSpeechRate(customRate)
+        }
+        val rate = _speechRate.value
+        val speedDesc = when {
+            rate <= 0.85f -> "ゆっくり"
+            rate in 0.86f..1.1f -> "標準速度"
+            rate in 1.11f..1.35f -> "やや速め"
+            rate in 1.36f..1.65f -> "速め"
+            else -> "緊急速報用高速"
+        }
+        val text = "読み上げ速度のテストです。現在の設定速度は、${String.format("%.2f", rate)}倍、$speedDesc です。"
+        speak(text, flush = true)
     }
 
     fun speak(text: String, flush: Boolean = false) {
         if (!_isVoiceEnabled.value || !isTtsReady) return
+        // Enforce the current speech rate right before speaking to guarantee the rate is applied
+        tts?.setSpeechRate(_speechRate.value)
         val queueMode = if (flush) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
         tts?.speak(text, queueMode, null, "utterance_${System.currentTimeMillis()}")
     }

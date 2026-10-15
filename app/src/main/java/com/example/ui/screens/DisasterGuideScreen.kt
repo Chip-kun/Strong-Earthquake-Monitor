@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.service.KyoshinBackgroundService
 import com.example.ui.KyoshinViewModel
 import com.example.ui.theme.KyoshinCardBorder
 import com.example.ui.theme.KyoshinPrimary
@@ -43,6 +44,7 @@ fun DisasterGuideScreen(
 
     var selectedSafetyStatus by remember { mutableStateOf("無事です。怪我はありません。") }
     var locationNote by remember { mutableStateOf("自宅におり安全です。") }
+    var isBgMonitoringEnabled by remember { mutableStateOf(KyoshinBackgroundService.isEnabled(context)) }
 
     Column(
         modifier = modifier
@@ -285,6 +287,104 @@ fun DisasterGuideScreen(
                                 text = item.category,
                                 color = Color(0xFF475569),
                                 fontSize = 10.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 24/7 Background Earthquake Monitoring Card
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, KyoshinCardBorder, RoundedCornerShape(10.dp))
+                        .testTag("guide_bg_monitoring_card"),
+                    colors = CardDefaults.cardColors(containerColor = KyoshinSurface),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = if (isBgMonitoringEnabled) Icons.Default.NotificationsActive else Icons.Default.NotificationsOff,
+                                    contentDescription = null,
+                                    tint = if (isBgMonitoringEnabled) KyoshinPrimary else Color.Gray,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = "常駐バックグラウンド地震監視",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                    Text(
+                                        text = if (isBgMonitoringEnabled) "● 24時間監視稼働中（アプリ終了後も通知）" else "○ 監視停止中",
+                                        color = if (isBgMonitoringEnabled) KyoshinPrimary else Color.Gray,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+
+                            Switch(
+                                checked = isBgMonitoringEnabled,
+                                onCheckedChange = { enabled ->
+                                    isBgMonitoringEnabled = enabled
+                                    if (enabled) {
+                                        KyoshinBackgroundService.start(context)
+                                        Toast.makeText(context, "常駐バックグラウンド監視を開始しました", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        KyoshinBackgroundService.stop(context)
+                                        Toast.makeText(context, "常駐バックグラウンド監視を停止しました", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                modifier = Modifier.testTag("guide_bg_monitoring_switch")
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "アプリを閉じた状態やスリープ中でも、気象庁およびP2P地震情報の最新震源・緊急地震速報を常時バックグラウンド監視し、即時にヘッズアップ通知・詳細音声アナウンスでお知らせします。",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Button(
+                            onClick = {
+                                KyoshinBackgroundService.triggerTestNotification(context)
+                                Toast.makeText(context, "3秒後にバックグラウンド通知が発令されます。アプリを閉じてお待ちください！", Toast.LENGTH_LONG).show()
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(36.dp)
+                                .testTag("btn_guide_test_bg_notification"),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, KyoshinPrimary.copy(alpha = 0.5f)),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = null,
+                                tint = KyoshinPrimary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "🔔 バックグラウンド通知テスト（3秒後発令）",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
                             )
                         }
                     }

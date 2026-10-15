@@ -20,7 +20,9 @@ object KyoshinNotificationManager {
     const val CHANNEL_EEW_ID = "channel_eew_critical"
     const val CHANNEL_EARTHQUAKE_ID = "channel_earthquake_reports"
     const val CHANNEL_SEISMOMETER_ID = "channel_seismometer_shake"
+    const val CHANNEL_SERVICE_ID = "channel_service_monitoring"
 
+    const val NOTIF_ID_SERVICE = 1000
     private const val NOTIF_ID_EEW = 1001
     private const val NOTIF_ID_SHAKE = 1002
     private const val NOTIF_ID_EQ_BASE = 2000
@@ -29,6 +31,17 @@ object KyoshinNotificationManager {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
                 ?: return
+
+            // Channel 0: Background Monitoring Foreground Service (Silent)
+            val serviceChannel = NotificationChannel(
+                CHANNEL_SERVICE_ID,
+                "常駐バックグラウンド監視サービス",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "アプリ終了後も地震・緊急地震速報を常時監視するための常駐通知"
+                enableVibration(false)
+                setShowBadge(false)
+            }
 
             // Channel 1: Critical EEW (Emergency)
             val eewChannel = NotificationChannel(
@@ -47,7 +60,7 @@ object KyoshinNotificationManager {
             val eqChannel = NotificationChannel(
                 CHANNEL_EARTHQUAKE_ID,
                 "地震情報（震度速報・震源情報）",
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "各地の震度および各地震の震源・津波情報の通知"
                 enableVibration(true)
@@ -66,7 +79,9 @@ object KyoshinNotificationManager {
                 lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
             }
 
-            notificationManager.createNotificationChannels(listOf(eewChannel, eqChannel, shakeChannel))
+            notificationManager.createNotificationChannels(
+                listOf(serviceChannel, eewChannel, eqChannel, shakeChannel)
+            )
         }
     }
 

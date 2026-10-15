@@ -1,5 +1,6 @@
 package com.example.network
 
+import com.example.model.EEWAlert
 import com.example.model.EarthquakeItem
 import com.example.model.PrefectureIntensity
 import com.example.model.parseShindoScaleToText
@@ -119,5 +120,38 @@ fun P2PQuakeResponse.toEarthquakeItem(): EarthquakeItem? {
         lon = hypo.longitude ?: 138.0,
         intensityPoints = pointList,
         detailedRegions = detailedCityRegions
+    )
+}
+
+fun P2PQuakeResponse.toEEWAlert(): EEWAlert? {
+    if (code != 556) return null
+    val hypo = earthquake?.hypocenter
+    val hypoName = hypo?.name ?: "緊急地震速報"
+    val mag = (hypo?.magnitude ?: 5.0).toFloat()
+    val depth = hypo?.depth ?: 10
+    val rawScale = earthquake?.maxScale ?: 40
+    val scaleText = parseShindoScaleToText(rawScale)
+    val isWarn = rawScale >= 45 || (hypo?.magnitude ?: 0.0) >= 6.0
+    val idStr = id ?: "eew_${System.currentTimeMillis()}"
+
+    return EEWAlert(
+        id = idStr,
+        reportNum = 1,
+        isFinal = false,
+        isWarning = isWarn,
+        hypocenter = hypoName,
+        lat = hypo?.latitude ?: 35.68,
+        lon = hypo?.longitude ?: 139.76,
+        depthKm = depth,
+        magnitude = mag,
+        maxShindo = scaleText,
+        originTimeMillis = System.currentTimeMillis(),
+        sWaveRadiusKm = 100f,
+        countdownSeconds = 15,
+        isActive = true,
+        isDrill = false,
+        tsunamiWarning = "津波の心配なし",
+        affectedPrefectures = emptyList(),
+        detailedAreas = emptyList()
     )
 }
