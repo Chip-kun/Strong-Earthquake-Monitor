@@ -57,6 +57,9 @@ class KyoshinViewModel(application: Application) : AndroidViewModel(application)
         initialValue = emptyList()
     )
 
+    private val _selectedHistoryLog = MutableStateFlow<EEWNotificationEntity?>(null)
+    val selectedHistoryLog: StateFlow<EEWNotificationEntity?> = _selectedHistoryLog.asStateFlow()
+
     private val sharedPreferences = application.getSharedPreferences("kyoshin_settings", Context.MODE_PRIVATE)
 
     private val _isSeismometerEnabled = MutableStateFlow(sharedPreferences.getBoolean("seismometer_enabled", true))
@@ -159,6 +162,9 @@ class KyoshinViewModel(application: Application) : AndroidViewModel(application)
 
         viewModelScope.launch {
             repository.earthquakes.collect { list ->
+                if (list.isNotEmpty()) {
+                    eewDatabaseRepository.importP2PEarthquakes(list)
+                }
                 val first = list.firstOrNull() ?: return@collect
                 if (lastAnnouncedEarthquakeId == null) {
                     lastAnnouncedEarthquakeId = first.id
@@ -167,6 +173,19 @@ class KyoshinViewModel(application: Application) : AndroidViewModel(application)
                     voiceAlertManager.announceDetailedEarthquakeReport(first)
                     KyoshinNotificationManager.notifyEarthquakeReport(getApplication(), first)
                 }
+            }
+        }
+    }
+
+    fun selectHistoryLog(log: EEWNotificationEntity?) {
+        _selectedHistoryLog.value = log
+    }
+
+    fun importP2PEarthquakesToRoom() {
+        viewModelScope.launch {
+            val list = repository.earthquakes.value
+            if (list.isNotEmpty()) {
+                eewDatabaseRepository.importP2PEarthquakes(list)
             }
         }
     }
@@ -221,7 +240,9 @@ class KyoshinViewModel(application: Application) : AndroidViewModel(application)
         magnitude: Float,
         depthKm: Int,
         isWarning: Boolean,
-        isDrill: Boolean = false
+        isDrill: Boolean = false,
+        latitude: Double = 0.0,
+        longitude: Double = 0.0
     ) {
         viewModelScope.launch {
             val dateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm:ss", Locale.JAPAN).apply {
@@ -239,6 +260,8 @@ class KyoshinViewModel(application: Application) : AndroidViewModel(application)
                 isWarning = isWarning,
                 isDrill = isDrill,
                 affectedAreas = if (isWarning) "周辺各地域（広域警戒）" else "震源周辺地域",
+                latitude = latitude,
+                longitude = longitude,
                 receivedAt = now
             )
             eewDatabaseRepository.insertCustomLog(entity)

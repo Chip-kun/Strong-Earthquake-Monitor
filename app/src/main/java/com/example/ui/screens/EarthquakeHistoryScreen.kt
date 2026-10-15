@@ -3,6 +3,7 @@ package com.example.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,12 +28,14 @@ import com.example.ui.theme.KyoshinAccentRed
 import com.example.ui.theme.KyoshinCardBorder
 import com.example.ui.theme.KyoshinPrimary
 import com.example.ui.theme.KyoshinSurface
+import com.example.ui.components.EarthquakeHistoryMapCanvas
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 enum class HistorySubTab {
     EEW_LOGS,
+    HISTORY_MAP,
     P2P_HISTORY
 }
 
@@ -43,6 +46,8 @@ fun EarthquakeHistoryScreen(
 ) {
     val earthquakes by viewModel.repository.earthquakes.collectAsState()
     val eewLogs by viewModel.eewLogs.collectAsState()
+    val selectedHistoryLog by viewModel.selectedHistoryLog.collectAsState()
+    val userLocation by viewModel.userLocation.collectAsState()
 
     var selectedSubTab by remember { mutableStateOf(HistorySubTab.EEW_LOGS) }
     var showClearDialog by remember { mutableStateOf(false) }
@@ -62,7 +67,7 @@ fun EarthquakeHistoryScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "地震・速報ログ管理",
                     color = Color.White,
@@ -70,12 +75,14 @@ fun EarthquakeHistoryScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = if (selectedSubTab == HistorySubTab.EEW_LOGS)
-                        "Roomデータベースによる緊急地震速報のローカル永続保存ログ"
-                    else
-                        "気象庁・P2P地震情報 リアルタイム震度履歴",
+                    text = when (selectedSubTab) {
+                        HistorySubTab.EEW_LOGS -> "Roomデータベースによる緊急地震速報のローカル永続保存ログ"
+                        HistorySubTab.HISTORY_MAP -> "Room保存の過去地震・震源地プロット地図（タップで詳細確認）"
+                        HistorySubTab.P2P_HISTORY -> "気象庁・P2P地震情報 リアルタイム震度履歴"
+                    },
                     color = Color(0xFF94A3B8),
-                    fontSize = 11.sp
+                    fontSize = 11.sp,
+                    maxLines = 1
                 )
             }
 
@@ -92,6 +99,16 @@ fun EarthquakeHistoryScreen(
                 }
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    IconButton(
+                        onClick = { viewModel.importP2PEarthquakesToRoom() },
+                        modifier = Modifier.testTag("sync_p2p_to_room_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Sync,
+                            contentDescription = "P2P履歴を同期保存",
+                            tint = KyoshinPrimary
+                        )
+                    }
                     IconButton(
                         onClick = { showAddSimulationDialog = true },
                         modifier = Modifier.testTag("add_simulation_eew_button")
@@ -118,9 +135,13 @@ fun EarthquakeHistoryScreen(
             }
         }
 
-        // Sub-tabs: EEW logs (Room) vs P2P Seismic Reports
+        // Sub-tabs: EEW logs (Room) vs History Map (Room) vs P2P Seismic Reports
         TabRow(
-            selectedTabIndex = if (selectedSubTab == HistorySubTab.EEW_LOGS) 0 else 1,
+            selectedTabIndex = when (selectedSubTab) {
+                HistorySubTab.EEW_LOGS -> 0
+                HistorySubTab.HISTORY_MAP -> 1
+                HistorySubTab.P2P_HISTORY -> 2
+            },
             containerColor = KyoshinSurface,
             contentColor = KyoshinPrimary,
             modifier = Modifier
@@ -137,17 +158,37 @@ fun EarthquakeHistoryScreen(
                         Icon(
                             imageVector = Icons.Default.Storage,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "EEW速報ログ (${eewLogs.size})",
+                            text = "速報ログ (${eewLogs.size})",
                             fontWeight = if (selectedSubTab == HistorySubTab.EEW_LOGS) FontWeight.Bold else FontWeight.Normal,
-                            fontSize = 12.sp
+                            fontSize = 11.sp
                         )
                     }
                 },
                 modifier = Modifier.testTag("tab_eew_logs")
+            )
+            Tab(
+                selected = selectedSubTab == HistorySubTab.HISTORY_MAP,
+                onClick = { selectedSubTab = HistorySubTab.HISTORY_MAP },
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Map,
+                            contentDescription = null,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "履歴マップ (${eewLogs.size})",
+                            fontWeight = if (selectedSubTab == HistorySubTab.HISTORY_MAP) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 11.sp
+                        )
+                    }
+                },
+                modifier = Modifier.testTag("tab_history_map")
             )
             Tab(
                 selected = selectedSubTab == HistorySubTab.P2P_HISTORY,
@@ -157,13 +198,13 @@ fun EarthquakeHistoryScreen(
                         Icon(
                             imageVector = Icons.Default.List,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "震度履歴 (${earthquakes.size})",
                             fontWeight = if (selectedSubTab == HistorySubTab.P2P_HISTORY) FontWeight.Bold else FontWeight.Normal,
-                            fontSize = 12.sp
+                            fontSize = 11.sp
                         )
                     }
                 },
@@ -204,14 +245,26 @@ fun EarthquakeHistoryScreen(
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(
-                                onClick = { showAddSimulationDialog = true },
-                                colors = ButtonDefaults.buttonColors(containerColor = KyoshinPrimary),
-                                modifier = Modifier.testTag("empty_add_simulation_button")
-                            ) {
-                                Icon(Icons.Default.Add, contentDescription = null, tint = Color.Black)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("模擬速報を受信・記録する", color = Color.Black, fontWeight = FontWeight.Bold)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = { showAddSimulationDialog = true },
+                                    colors = ButtonDefaults.buttonColors(containerColor = KyoshinPrimary),
+                                    modifier = Modifier.testTag("empty_add_simulation_button")
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.Black)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("模擬速報を追加", color = Color.Black, fontWeight = FontWeight.Bold)
+                                }
+                                Button(
+                                    onClick = { viewModel.importP2PEarthquakesToRoom() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                                    border = BorderStroke(1.dp, KyoshinCardBorder),
+                                    modifier = Modifier.testTag("empty_sync_p2p_button")
+                                ) {
+                                    Icon(Icons.Default.Sync, contentDescription = null, tint = KyoshinPrimary)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("P2P履歴を同期", color = Color.White)
+                                }
                             }
                         }
                     }
@@ -226,10 +279,79 @@ fun EarthquakeHistoryScreen(
                             EEWNotificationCard(
                                 log = log,
                                 onSpeak = { viewModel.announceEEWLog(log) },
-                                onDelete = { viewModel.deleteEEWLog(log) }
+                                onDelete = { viewModel.deleteEEWLog(log) },
+                                onViewOnMap = {
+                                    viewModel.selectHistoryLog(log)
+                                    selectedSubTab = HistorySubTab.HISTORY_MAP
+                                }
                             )
                         }
                     }
+                }
+            }
+
+            HistorySubTab.HISTORY_MAP -> {
+                if (eewLogs.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.Map,
+                                contentDescription = null,
+                                tint = Color(0xFF64748B),
+                                modifier = Modifier.size(56.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "プロット可能な地震ログがありません",
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Roomデータベースに保存された地震情報を元に、過去の震源地を地図上にプロットして振り返ることができます。",
+                                color = Color(0xFF94A3B8),
+                                fontSize = 12.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = { showAddSimulationDialog = true },
+                                    colors = ButtonDefaults.buttonColors(containerColor = KyoshinPrimary),
+                                    modifier = Modifier.testTag("empty_map_add_simulation_button")
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.Black)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("模擬速報を追加", color = Color.Black, fontWeight = FontWeight.Bold)
+                                }
+                                Button(
+                                    onClick = { viewModel.importP2PEarthquakesToRoom() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                                    border = BorderStroke(1.dp, KyoshinCardBorder),
+                                    modifier = Modifier.testTag("empty_map_sync_p2p_button")
+                                ) {
+                                    Icon(Icons.Default.Sync, contentDescription = null, tint = KyoshinPrimary)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("P2P履歴を同期", color = Color.White)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    EarthquakeHistoryMapCanvas(
+                        eewLogs = eewLogs,
+                        selectedLog = selectedHistoryLog,
+                        onLogSelected = { viewModel.selectHistoryLog(it) },
+                        userLocation = userLocation,
+                        onSpeakLog = { viewModel.announceEEWLog(it) },
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
             }
 
@@ -289,8 +411,8 @@ fun EarthquakeHistoryScreen(
     if (showAddSimulationDialog) {
         SimulationEEWDialog(
             onDismiss = { showAddSimulationDialog = false },
-            onConfirm = { hypocenter, maxShindo, mag, depth, isWarning, isDrill ->
-                viewModel.insertSampleEEWLog(hypocenter, maxShindo, mag, depth, isWarning, isDrill)
+            onConfirm = { hypocenter, maxShindo, mag, depth, isWarning, isDrill, lat, lon ->
+                viewModel.insertSampleEEWLog(hypocenter, maxShindo, mag, depth, isWarning, isDrill, lat, lon)
                 showAddSimulationDialog = false
             }
         )
@@ -302,6 +424,7 @@ fun EEWNotificationCard(
     log: EEWNotificationEntity,
     onSpeak: () -> Unit,
     onDelete: () -> Unit,
+    onViewOnMap: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val receivedDateStr = remember(log.receivedAt) {
@@ -428,8 +551,24 @@ fun EEWNotificationCard(
                     }
                 }
 
-                // Action Buttons: TTS Audio & Delete
+                // Action Buttons: View on Map, TTS Audio & Delete
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    IconButton(
+                        onClick = onViewOnMap,
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFF1E293B))
+                            .testTag("view_map_eew_log_${log.id}")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Place,
+                            contentDescription = "地図で確認",
+                            tint = KyoshinPrimary,
+                            modifier = Modifier.size(17.dp)
+                        )
+                    }
+
                     IconButton(
                         onClick = onSpeak,
                         modifier = Modifier
@@ -441,7 +580,7 @@ fun EEWNotificationCard(
                         Icon(
                             imageVector = Icons.Default.VolumeUp,
                             contentDescription = "音声読み上げ",
-                            tint = KyoshinPrimary,
+                            tint = Color.White,
                             modifier = Modifier.size(17.dp)
                         )
                     }
@@ -486,15 +625,28 @@ fun EEWNotificationCard(
 @Composable
 fun SimulationEEWDialog(
     onDismiss: () -> Unit,
-    onConfirm: (hypocenter: String, maxShindo: String, mag: Float, depth: Int, isWarning: Boolean, isDrill: Boolean) -> Unit
+    onConfirm: (hypocenter: String, maxShindo: String, mag: Float, depth: Int, isWarning: Boolean, isDrill: Boolean, lat: Double, lon: Double) -> Unit
 ) {
     var selectedPreset by remember { mutableIntStateOf(0) }
 
+    data class PresetItem(
+        val name: String,
+        val shindo: String,
+        val mag: Float,
+        val depth: Int,
+        val lat: Double,
+        val lon: Double,
+        val desc: String
+    )
+
     val presets = listOf(
-        Triple("首都直下（東京湾北部）", "6強", Pair(7.3f, 30)),
-        Triple("能登半島沖", "7", Pair(7.6f, 16)),
-        Triple("日向灘", "6弱", Pair(7.1f, 30)),
-        Triple("千葉県東方沖", "5弱", Pair(6.2f, 40))
+        PresetItem("能登半島沖（令和6年能登半島地震）", "7", 7.6f, 16, 37.50, 137.20, "日本海側最大級 / 大津波警報"),
+        PresetItem("首都直下（東京湾北部）", "6強", 7.3f, 30, 35.65, 139.85, "首都圏直下 / 関東広域警報"),
+        PresetItem("日向灘地震", "6弱", 7.1f, 30, 31.80, 131.70, "南海トラフ臨時情報対象"),
+        PresetItem("福島県沖地震", "6強", 7.4f, 57, 37.70, 141.60, "東北太平洋沿岸"),
+        PresetItem("千葉県東方沖", "5弱", 6.2f, 40, 35.40, 140.50, "関東東部沿岸"),
+        PresetItem("熊本地震（本震）", "7", 7.3f, 12, 32.78, 130.74, "九州内陸直下型"),
+        PresetItem("北海道胆振東部地震", "7", 6.7f, 37, 42.69, 142.00, "北海道震度7観測")
     )
 
     AlertDialog(
@@ -503,7 +655,7 @@ fun SimulationEEWDialog(
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "Roomデータベースへの保存テスト用プリセットを選択してください:",
+                    text = "Roomデータベースに保存し、履歴マップにプロットする震源を選択:",
                     fontSize = 12.sp,
                     color = Color(0xFF94A3B8)
                 )
@@ -514,7 +666,8 @@ fun SimulationEEWDialog(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(6.dp))
                             .background(if (selectedPreset == index) Color(0xFF1E293B) else Color.Transparent)
-                            .padding(8.dp),
+                            .clickable { selectedPreset = index }
+                            .padding(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
@@ -524,13 +677,13 @@ fun SimulationEEWDialog(
                         Spacer(modifier = Modifier.width(6.dp))
                         Column {
                             Text(
-                                text = preset.first,
+                                text = preset.name,
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp
                             )
                             Text(
-                                text = "震度${preset.second} / M${preset.third.first} / 深さ${preset.third.second}km",
+                                text = "震度${preset.shindo} / M${preset.mag} / 深さ${preset.depth}km (${preset.desc})",
                                 color = Color(0xFF94A3B8),
                                 fontSize = 11.sp
                             )
@@ -544,12 +697,14 @@ fun SimulationEEWDialog(
                 onClick = {
                     val p = presets[selectedPreset]
                     onConfirm(
-                        p.first,
-                        p.second,
-                        p.third.first,
-                        p.third.second,
+                        p.name,
+                        p.shindo,
+                        p.mag,
+                        p.depth,
                         true,
-                        false
+                        false,
+                        p.lat,
+                        p.lon
                     )
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = KyoshinPrimary),
