@@ -1,4 +1,4 @@
-# 強震モニター速報 (Kyoshin Monitor & Earthquake Tracker)
+# 強震モニター (Kyoshin Monitor & Earthquake Tracker)
 
 <p align="center">
   <img src="screenshot_kmoni.png" width="280" alt="強震モニタ画面" />
@@ -6,7 +6,7 @@
   <img src="screenshot_sensor.png" width="280" alt="マイ地震計画面" />
 </p>
 
-「強震モニター速報」は、リアルタイムの強震モニタ画像、気象庁およびP2P地震情報APIによる地震履歴・緊急地震速報（EEW）の受信、デバイスの加速度センサーを用いた簡易マイ地震計、そして充実した音声読み上げ・防災訓練機能を提供するAndroid向け総合地震・防災アプリです。
+「強震モニター」は、リアルタイムの強震モニタ画像、気象庁およびP2P地震情報APIによる地震履歴・緊急地震速報（EEW）の受信、デバイスの加速度センサーを用いた簡易マイ地震計、そして充実した音声読み上げ・防災訓練機能を提供するAndroid向け総合地震・防災アプリです。
 
 最新の **Jetpack Compose** と **Material Design 3** を採用し、直感的で洗練されたUIと確実な速報通知を実現しています。
 
