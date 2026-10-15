@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">強震モニター</string>
+    <string name="tab_kyoshin">強震モニタ</string>
+    <string name="tab_earthquakes">地震履歴</string>
+    <string name="tab_seismometer">マイ地震計</string>
+    <string name="tab_drill">緊急訓練</string>
+    <string name="tab_guide">防災ガイド</string>
+    <string name="eew_title">緊急地震速報</string>
+    <string name="eew_warning">強い揺れに警戒してください</string>
+    <string name="btn_drill_start">訓練速報を発令</string>
+    <string name="voice_enabled">音声読み上げ</string>
+</resources>
