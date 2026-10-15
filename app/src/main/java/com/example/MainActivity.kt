@@ -120,7 +120,7 @@ fun KyoshinMainApp(viewModel: KyoshinViewModel = viewModel()) {
                             }
                         }
                         Text(
-                            text = "強震モニター速報",
+                            text = "強震モニター",
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White

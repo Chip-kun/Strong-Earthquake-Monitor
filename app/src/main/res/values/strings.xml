@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">強震モニター速報</string>
+    <string name="app_name">強震モニター</string>
     <string name="tab_kyoshin">強震モニタ</string>
     <string name="tab_earthquakes">地震履歴</string>
     <string name="tab_seismometer">マイ地震計</string>

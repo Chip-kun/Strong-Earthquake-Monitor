@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "強震モニター速報"
+rootProject.name = "強震モニター"
 
 include(":app")

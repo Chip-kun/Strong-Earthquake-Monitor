@@ -1,6 +1,0 @@
-{
-  "name": "強震モニター",
-  "description": "リアルタイム強震モニタと緊急地震速報の音声通知、波形オシログラフ、観測点マップアプリ",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

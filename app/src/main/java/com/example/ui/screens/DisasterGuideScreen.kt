@@ -112,7 +112,7 @@ fun DisasterGuideScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         // Message Preview Box
-                        val messageToShare = "【地震安否連絡】\n状態: $selectedSafetyStatus\n居場所: $locationNote\n（強震モニター速報より送信）"
+                        val messageToShare = "【地震安否連絡】\n状態: $selectedSafetyStatus\n居場所: $locationNote\n（強震モニターより送信）"
                         Surface(
                             shape = RoundedCornerShape(6.dp),
                             color = Color(0xFF0F172A),
