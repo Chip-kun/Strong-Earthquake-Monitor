@@ -12,6 +12,34 @@
 
 ---
 
+## 📥 APKダウンロード画面 (Download APK)
+
+Android実機に直接インストールしてご利用いただける最新デバッグAPK（**v1.0.4**）の配布情報です。  
+スマートフォンから直接ダウンロードされる方は「**APK直接ダウンロード**」ボタンをタップしてください。PC等からご覧の方は、スマートフォンカメラで右側のQRコードをスキャンしてダウンロードできます。
+
+<div align="center">
+
+| 📲 最新リリース: **v1.0.4** (デバッグ版) | 📷 スマホ用スキャンQRコード |
+| :---: | :---: |
+| <br/>[![Download Kyoshin Monitor APK](https://img.shields.io/badge/📥_APK直接ダウンロード-KyoshinMonitor--debug.apk_(v1.0.4)-00C853?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Chip-kun/Strong-Earthquake-Monitor/releases/download/V1.0.4/KyoshinMonitor-debug.apk)<br/><br/>**[🔗 https://github.com/Chip-kun/Strong-Earthquake-Monitor/releases/download/V1.0.4/KyoshinMonitor-debug.apk](https://github.com/Chip-kun/Strong-Earthquake-Monitor/releases/download/V1.0.4/KyoshinMonitor-debug.apk)**<br/><br/>📁 **ファイル名**: `KyoshinMonitor-debug.apk`<br/>🔖 **バージョン**: `v1.0.4`<br/>🤖 **対応OS**: Android 8.0（API 26）以上<br/>⚡ **主な新機能**: 過去震源地のRoom履歴マッププロット、緊急地震速報音声読み上げ、マイ地震計<br/><br/> | <br/><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https%3A%2F%2Fgithub.com%2FChip-kun%2FStrong-Earthquake-Monitor%2Freleases%2Fdownload%2FV1.0.4%2FKyoshinMonitor-debug.apk" width="180" height="180" alt="APKダウンロード用QRコード" /><br/><sub>スマートフォンのカメラで読み取ってダウンロード</sub><br/><br/> |
+
+</div>
+
+### 📲 インストール手順 (簡単3ステップ)
+
+1. **APKのダウンロード**:
+   - 上記の「**[APK直接ダウンロード](https://github.com/Chip-kun/Strong-Earthquake-Monitor/releases/download/V1.0.4/KyoshinMonitor-debug.apk)**」リンクまたはQRコードから `KyoshinMonitor-debug.apk` をダウンロードします。
+2. **提供元不明のアプリの許可**:
+   - Chrome等のブラウザからダウンロード後、インストール時に「提供元不明のアプリ」または「この提供元からのアプリを許可」と表示された場合は、画面の案内に従ってトグルを「**許可（ON）**」に設定してください。
+3. **インストール完了と権限設定**:
+   - 「**インストール**」をタップして完了したらアプリを起動します。
+   - 初回起動時に**通知の許可**（緊急地震速報の通知用）および**位置情報の許可**（震源地からの距離算出用）を「許可」にしてご利用ください。
+
+> ℹ️ **Google Playプロテクトの警告が表示された場合**:  
+> 本APKはGitHub Releaseから直接配布されるデバッグ署名済みバイナリです。「Playプロテクトによりブロックされました」と表示される場合は、「**詳細**」をタップし「**このままインストールする（安全ではないアプリをインストール）**」を選択して進めてください。
+
+---
+
 ## 🌟 主な機能
 
 ### 1. リアルタイム強震モニタ (`#kmoni`)
