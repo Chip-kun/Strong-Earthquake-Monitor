@@ -9,12 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +25,7 @@ import com.example.model.ObservationStation
 import com.example.ui.KyoshinViewModel
 import com.example.ui.MapStyle
 import com.example.ui.components.EEWAlertBanner
+import com.example.ui.components.JapanSeismicIntensityMap
 import com.example.ui.components.KyoshinMapCanvas
 import com.example.ui.components.SeismographView
 import com.example.ui.components.ShindoScaleBar
@@ -55,6 +51,8 @@ fun MonitorScreen(
     val distanceToEpicenter by viewModel.distanceToEpicenter.collectAsState()
     val userEtaSec by viewModel.userEtaSec.collectAsState()
     val nearestStation by viewModel.nearestStation.collectAsState()
+
+    var useJmaSeismicMap by remember { mutableStateOf(false) }
 
     // Location Permission launcher
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -117,7 +115,33 @@ fun MonitorScreen(
                 )
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                // Toggle between Kyoshin Map and Japan Seismic Intensity Map Overlay
+                Button(
+                    onClick = { useJmaSeismicMap = !useJmaSeismicMap },
+                    modifier = Modifier
+                        .height(32.dp)
+                        .testTag("toggle_jma_map_mode"),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (useJmaSeismicMap) KyoshinPrimary else Color(0xFF1E293B),
+                        contentColor = if (useJmaSeismicMap) Color.Black else KyoshinPrimary
+                    ),
+                    shape = RoundedCornerShape(6.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Icon(
+                        imageVector = if (useJmaSeismicMap) Icons.Default.Map else Icons.Default.Layers,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (useJmaSeismicMap) "JMA震度" else "強震網",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
                 // Request/refresh GPS Location
                 IconButton(
                     onClick = { locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
