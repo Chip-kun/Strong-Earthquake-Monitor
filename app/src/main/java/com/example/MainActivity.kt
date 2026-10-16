@@ -63,7 +63,7 @@ class MainActivity : ComponentActivity() {
             .build()
         WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
             "EEWBackgroundMonitor",
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             periodicWork
         )
 

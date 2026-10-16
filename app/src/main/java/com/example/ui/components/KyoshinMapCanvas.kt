@@ -40,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import com.example.location.UserLocation
 import com.example.model.*
 import com.example.model.DisplayMode
@@ -64,6 +66,7 @@ fun KyoshinMapCanvas(
     onStationSelected: (ObservationStation?) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var zoomLevel by remember { mutableFloatStateOf(1.0f) }
     var panOffsetX by remember { mutableFloatStateOf(0f) }
     var panOffsetY by remember { mutableFloatStateOf(0f) }
@@ -259,6 +262,21 @@ fun KyoshinMapCanvas(
                         center = Offset(sx, sy),
                         style = Stroke(width = 1.2f)
                     )
+
+                    // Subterranean Borehole Collar Indicator (地中観測孔)
+                    if (depthMode == DepthMode.BOREHOLE) {
+                        drawCircle(
+                            color = Color(0xFF38BDF8).copy(alpha = 0.85f),
+                            radius = baseRadius + 2.5f,
+                            center = Offset(sx, sy),
+                            style = Stroke(width = 1.4f)
+                        )
+                        drawCircle(
+                            color = Color.White,
+                            radius = 1.0f,
+                            center = Offset(sx, sy)
+                        )
+                    }
 
                     // Station city label
                     if (effectiveShowStationLabels && (zoomLevel > 1.35f || station.realtimeShindo >= 1.0f || selectedStation?.id == station.id)) {
@@ -469,21 +487,42 @@ fun KyoshinMapCanvas(
                     )
                 }
 
-                // Depth Mode (地表/地中)
-                DepthMode.entries.forEach { mode ->
-                    val isSelected = depthMode == mode
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(if (isSelected) Color(0xFFF59E0B) else Color.Transparent)
-                            .clickable { onDepthModeChanged(mode) }
-                            .padding(horizontal = 4.dp, vertical = 3.dp)
-                    ) {
-                        Text(
-                            text = mode.label,
-                            color = if (isSelected) Color.Black else Color(0xFF94A3B8),
-                            fontSize = 10.sp
-                        )
+                // Depth Mode (地表/地中) Segmented Control
+                Surface(
+                    color = Color(0xFF0F172A),
+                    border = BorderStroke(1.dp, Color(0xFF334155)),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Row {
+                        DepthMode.entries.forEach { mode ->
+                            val isSelected = depthMode == mode
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(
+                                        if (isSelected) {
+                                            if (mode == DepthMode.BOREHOLE) Color(0xFF0284C7) else Color(0xFFD97706)
+                                        } else Color.Transparent
+                                    )
+                                    .clickable {
+                                        onDepthModeChanged(mode)
+                                        val msg = if (mode == DepthMode.BOREHOLE) {
+                                            "【地中】観測孔モード (-100m〜-3000m 深部岩盤) に切り替えました"
+                                        } else {
+                                            "【地表】表層観測点モード (地表0m) に切り替えました"
+                                        }
+                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                    }
+                                    .padding(horizontal = 6.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = mode.label,
+                                    color = if (isSelected) Color.White else Color(0xFF94A3B8),
+                                    fontSize = 10.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -509,6 +548,40 @@ fun KyoshinMapCanvas(
                         fontWeight = FontWeight.Bold
                     )
                 }
+            }
+        }
+
+        // Depth Mode HUD Badge (地表/地中 表示中インジケータ)
+        Surface(
+            color = if (depthMode == DepthMode.BOREHOLE) Color(0xFF0F172A).copy(alpha = 0.92f) else Color(0xFF1E293B).copy(alpha = 0.92f),
+            border = BorderStroke(1.dp, if (depthMode == DepthMode.BOREHOLE) Color(0xFF38BDF8) else Color(0xFFF59E0B)),
+            shape = RoundedCornerShape(6.dp),
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(start = 10.dp, top = 42.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(
+                            if (depthMode == DepthMode.BOREHOLE) Color(0xFF38BDF8) else Color(0xFFF59E0B),
+                            CircleShape
+                        )
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = if (depthMode == DepthMode.BOREHOLE)
+                        "【地中】観測孔 (-100m〜-3000m 深部岩盤 / ノイズ除去)"
+                    else
+                        "【地表】表層観測点 (0m 表層地盤増幅含む)",
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
 
@@ -573,6 +646,19 @@ fun KyoshinMapCanvas(
                         Text(
                             text = String.format("%.2f gal", selectedStation.pga),
                             color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = "観測深度:", color = Color.Gray, fontSize = 11.sp)
+                        Text(
+                            text = if (depthMode == DepthMode.BOREHOLE) "地中 (-100m 深部岩盤)" else "地表 (0m 表層)",
+                            color = if (depthMode == DepthMode.BOREHOLE) Color(0xFF38BDF8) else Color(0xFFF59E0B),
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp
                         )

@@ -40,6 +40,13 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- WorkManager Foreground Service for listening & audio alerts in background -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+
         <!-- Auto-restart receiver upon phone reboot or update -->
         <receiver
             android:name=".service.BootReceiver"

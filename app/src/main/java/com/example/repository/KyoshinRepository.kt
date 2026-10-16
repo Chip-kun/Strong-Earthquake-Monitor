@@ -57,8 +57,16 @@ class KyoshinRepository(
 
     fun setDepthMode(mode: DepthMode) {
         _depthMode.value = mode
+        val isBorehole = mode == DepthMode.BOREHOLE
         val currentStations = _stations.value
-        _stations.value = currentStations.map { it.copy(isBorehole = mode == DepthMode.BOREHOLE) }
+        _stations.value = currentStations.map { st ->
+            val factor = if (isBorehole) 0.5f else 1.8f
+            st.copy(
+                isBorehole = isBorehole,
+                pga = (st.pga * factor).coerceIn(0.015f, 1500f),
+                realtimeShindo = (st.realtimeShindo * factor).coerceIn(0f, 7f)
+            )
+        }
     }
 
     fun triggerDrillEEW(drill: EEWAlert) {
@@ -282,9 +290,14 @@ class KyoshinRepository(
                         }
                     } else {
                         // Ambient background micro-tremors (常時微動)
-                        val noise = (sin(tick * 0.5 + station.lat) * 0.08 + Random.nextFloat() * 0.08).toFloat()
-                        shindo = noise.coerceIn(0f, 0.3f)
-                        pga = (shindo * 1.5f + 0.05f) * boreholeDamping
+                        // In borehole (地中), subterranean bedrock eliminates surface human & wind vibration
+                        val rawNoise = if (isBorehole) {
+                            (sin(tick * 0.25 + station.lat) * 0.02 + Random.nextFloat() * 0.02).toFloat()
+                        } else {
+                            (sin(tick * 0.5 + station.lat) * 0.09 + Random.nextFloat() * 0.09).toFloat()
+                        }
+                        shindo = (rawNoise * boreholeDamping).coerceIn(0f, 0.35f)
+                        pga = (shindo * 1.5f + if (isBorehole) 0.015f else 0.065f) * boreholeDamping
                     }
 
                     val pgv = (pga * 0.12f).coerceAtLeast(0.005f)

@@ -231,20 +231,31 @@ fun MonitorScreen(
                 .weight(1f)
                 .fillMaxWidth()
         ) {
-            KyoshinMapCanvas(
-                stations = stations,
-                activeEEW = activeEEW,
-                selectedStation = selectedStation,
-                userLocation = userLocation,
-                mapStyle = mapStyle,
-                showStationLabels = showStationLabels,
-                displayMode = displayMode,
-                depthMode = depthMode,
-                onMapStyleChanged = { viewModel.setMapStyle(it) },
-                onDisplayModeChanged = { mode: DisplayMode -> viewModel.repository.setDisplayMode(mode) },
-                onDepthModeChanged = { viewModel.repository.setDepthMode(it) },
-                onStationSelected = { viewModel.repository.selectStation(it) }
-            )
+            if (useJmaSeismicMap) {
+                JapanSeismicIntensityMap(
+                    viewModel = viewModel,
+                    stations = stations,
+                    activeEEW = activeEEW,
+                    userLocation = userLocation,
+                    onStationClick = { viewModel.repository.selectStation(it) },
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                KyoshinMapCanvas(
+                    stations = stations,
+                    activeEEW = activeEEW,
+                    selectedStation = selectedStation,
+                    userLocation = userLocation,
+                    mapStyle = mapStyle,
+                    showStationLabels = showStationLabels,
+                    displayMode = displayMode,
+                    depthMode = depthMode,
+                    onMapStyleChanged = { viewModel.setMapStyle(it) },
+                    onDisplayModeChanged = { mode: DisplayMode -> viewModel.repository.setDisplayMode(mode) },
+                    onDepthModeChanged = { viewModel.repository.setDepthMode(it) },
+                    onStationSelected = { viewModel.repository.selectStation(it) }
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(4.dp))
