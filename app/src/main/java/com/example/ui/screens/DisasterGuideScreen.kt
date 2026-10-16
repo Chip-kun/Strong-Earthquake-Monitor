@@ -422,7 +422,7 @@ fun DisasterGuideScreen(
                                 shape = RoundedCornerShape(4.dp)
                             ) {
                                 Text(
-                                    text = "v1.0.4",
+                                    text = "v1.0.5",
                                     color = KyoshinPrimary,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
@@ -434,7 +434,7 @@ fun DisasterGuideScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "最新のデバッグAPKを配布しています。最新機能（過去震源地のRoom履歴マップ、緊急速報音声読み上げ等）をご利用いただけます。",
+                            text = "最新のデバッグAPKを配布しています。最新機能（WorkManager常駐地震監視・音声警告、地表/地中観測孔モード、JMA震度日本地図重畳、過去震源地Room履歴マップ、緊急速報音声読み上げ）をご利用いただけます。",
                             color = Color(0xFF94A3B8),
                             fontSize = 12.sp,
                             lineHeight = 17.sp
@@ -442,7 +442,7 @@ fun DisasterGuideScreen(
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        val apkUrl = "https://github.com/Chip-kun/Strong-Earthquake-Monitor/releases/download/V1.0.4/KyoshinMonitor-debug.apk"
+                        val apkUrl = "https://github.com/Chip-kun/Strong-Earthquake-Monitor/releases/download/V1.0.5/KyoshinMonitor-debug.apk"
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
