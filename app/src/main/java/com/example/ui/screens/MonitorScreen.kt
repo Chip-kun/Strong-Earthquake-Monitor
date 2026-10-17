@@ -245,6 +245,7 @@ fun MonitorScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val (niedColor, niedText) = when (kmoniStats.status) {
                         KmoniFetchStatus.SUCCESS -> Color(0xFF06B6D4) to "画像取得"
+                        KmoniFetchStatus.SYNCING -> Color(0xFF818CF8) to "同期中"
                         KmoniFetchStatus.FETCHING -> Color(0xFF3B82F6) to "取得中"
                         KmoniFetchStatus.DELAY_ADJUST -> Color(0xFFF59E0B) to "遅延調整"
                         KmoniFetchStatus.ERROR -> Color(0xFFEF4444) to "エラー"

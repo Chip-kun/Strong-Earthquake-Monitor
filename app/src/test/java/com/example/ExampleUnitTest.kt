@@ -36,11 +36,11 @@ class ExampleUnitTest {
 
         // Surface Shindo image URL test
         val urlSurface = fetcher.buildImageUrl(date, com.example.network.KmoniImageType.SHINDO, com.example.model.DepthMode.SURFACE)
-        assertEquals("http://www.kmoni.bosai.go.jp/data/map_img/RealtimeImg/jma_s/20261017/20261017123456.jma_s.gif", urlSurface)
+        assertEquals("http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/jma_s/20261017/20261017123456.jma_s.gif", urlSurface)
 
         // Borehole PGA image URL test
         val urlBorehole = fetcher.buildImageUrl(date, com.example.network.KmoniImageType.PGA, com.example.model.DepthMode.BOREHOLE)
-        assertEquals("http://www.kmoni.bosai.go.jp/data/map_img/RealtimeImg/acmap_b/20261017/20261017123456.acmap_b.gif", urlBorehole)
+        assertEquals("http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/acmap_b/20261017/20261017123456.acmap_b.gif", urlBorehole)
 
         // EEW JSON URL test
         val eewJsonUrl = fetcher.buildEEWJsonUrl(date)

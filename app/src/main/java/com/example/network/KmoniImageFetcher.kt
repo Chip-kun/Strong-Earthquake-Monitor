@@ -2,6 +2,8 @@ package com.example.network
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.util.Log
 import com.example.model.DepthMode
 import com.example.model.EEWAlert
@@ -16,7 +18,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
-import kotlin.math.min
 
 enum class KmoniImageType(val code: String, val label: String) {
     SHINDO("jma", "リアルタイム震度"),
@@ -27,6 +28,7 @@ enum class KmoniImageType(val code: String, val label: String) {
 
 enum class KmoniFetchStatus(val label: String) {
     IDLE("待機中"),
+    SYNCING("時刻同期中"),
     FETCHING("画像取得中"),
     SUCCESS("正常取得"),
     DELAY_ADJUST("遅延調整中"),
@@ -38,7 +40,7 @@ data class KmoniFetchStats(
     val successCount: Long = 0,
     val failureCount: Long = 0,
     val lastLatencyMs: Long = 0,
-    val currentDelayOffsetSec: Int = 2,
+    val currentDelayOffsetSec: Int = 1,
     val lastSuccessTimestamp: String = "",
     val latestImageUrl: String = "",
     val errorMessage: String? = null
@@ -47,12 +49,15 @@ data class KmoniFetchStats(
 /**
  * 防災科学技術研究所 (NIED) の強震モニタAPIからリアルタイム画像を定期取得（1秒周期等）するロジック。
  *
- * 【対応機能】
- * - 地表 (s) / 地中 (b) の観測点画像の自動切り替え
- * - リアルタイム震度 (jma)、最大加速度 (acmap)、最大速度 (vcmap)、最大変位 (dcmap) の取得
- * - JSTタイムスタンプ生成およびサーバー遅延（1〜3秒）の動的補正
- * - OkHttpによる高速HTTPフェッチ、Bitmapデコード、キャッシュ
- * - 防災科研EEW JSONエンドポイント（/webservice/hypo/eew/）の同時チェック
+ * 【重要仕様】
+ * 1. エンドポイントのケースセンシティブ対応:
+ *    /data/map_img/RealTimeImg/ （Tが大文字）
+ * 2. サーバー時刻同期:
+ *    /webservice/server/pros/latest.json よりサーバー側の最新有効秒（latest_time）を常時同期。
+ * 3. ベースマップ合成:
+ *    透明背景の観測点リアルタイムGIFを /data/map_img/CommonImg/base_map_b.gif（暗色日本地図）と
+ *    Canvas上で重ね合わせて1枚の完全な強震モニタ画像としてレンダリング。
+ * 4. 防災科研EEW JSONエンドポイント（/webservice/hypo/eew/）の自動チェック。
  */
 class KmoniImageFetcher(
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
@@ -64,15 +69,21 @@ class KmoniImageFetcher(
     companion object {
         const val TAG = "KmoniImageFetcher"
         const val BASE_URL = "http://www.kmoni.bosai.go.jp"
+        const val LATEST_TIME_URL = "http://www.kmoni.bosai.go.jp/webservice/server/pros/latest.json"
+        const val BASEMAP_URL = "http://www.kmoni.bosai.go.jp/data/map_img/CommonImg/base_map_b.gif"
         const val DEFAULT_INTERVAL_MS = 1000L
-        const val MIN_DELAY_OFFSET_SEC = 1
-        const val MAX_DELAY_OFFSET_SEC = 5
     }
 
     private var pollingJob: Job? = null
     private var isRunning = false
     private var pollIntervalMs = DEFAULT_INTERVAL_MS
-    private var delayOffsetSeconds = 2 // Typical NIED image server lag is 1-2 seconds
+
+    // Clock calibration between device and NIED server
+    private var serverClockOffsetMillis: Long? = null
+    private var lastServerSyncTimestamp = 0L
+
+    // Cached dark base map of Japan
+    private var cachedBaseMap: Bitmap? = null
 
     private val _depthMode = MutableStateFlow(DepthMode.SURFACE)
     val depthMode: StateFlow<DepthMode> = _depthMode.asStateFlow()
@@ -98,7 +109,7 @@ class KmoniImageFetcher(
     private val jstTimeFormat = SimpleDateFormat("yyyyMMddHHmmss", Locale.JAPAN).apply {
         timeZone = TimeZone.getTimeZone("Asia/Tokyo")
     }
-    private val displayDateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm:ss", Locale.JAPAN).apply {
+    private val serverDisplayFormat = SimpleDateFormat("yyyy/MM/dd HH:mm:ss", Locale.JAPAN).apply {
         timeZone = TimeZone.getTimeZone("Asia/Tokyo")
     }
 
@@ -146,6 +157,9 @@ class KmoniImageFetcher(
     private fun startPollingLoop() {
         pollingJob?.cancel()
         pollingJob = scope.launch {
+            // Pre-load basemap once in background
+            ensureBaseMapLoaded()
+
             while (isActive && isRunning) {
                 fetchLatestImage()
                 delay(pollIntervalMs)
@@ -155,7 +169,7 @@ class KmoniImageFetcher(
 
     /**
      * Builds the target URL for NIED Kyoshin Monitor image
-     * Example: http://www.kmoni.bosai.go.jp/data/map_img/RealtimeImg/jma_s/20261017/20261017123456.jma_s.gif
+     * Example: http://www.kmoni.bosai.go.jp/data/map_img/RealTimeImg/jma_s/20261017/20261017220143.jma_s.gif
      */
     fun buildImageUrl(date: Date, type: KmoniImageType, depth: DepthMode): String {
         val ymd = jstDateFormat.format(date)
@@ -164,7 +178,8 @@ class KmoniImageFetcher(
         val typeCode = type.code
         val fileName = "${typeCode}_${depthSuffix}"
 
-        return "$BASE_URL/data/map_img/RealtimeImg/$fileName/$ymd/$ymdHms.$fileName.gif"
+        // RealTimeImg with capital 'T'
+        return "$BASE_URL/data/map_img/RealTimeImg/$fileName/$ymd/$ymdHms.$fileName.gif"
     }
 
     /**
@@ -185,62 +200,118 @@ class KmoniImageFetcher(
         return "$BASE_URL/webservice/hypo/eew/$ymdHms.json"
     }
 
+    private suspend fun ensureBaseMapLoaded() {
+        if (cachedBaseMap != null) return
+        try {
+            cachedBaseMap = downloadBitmap(BASEMAP_URL)
+            Log.d(TAG, "NIED dark basemap loaded successfully: ${cachedBaseMap?.width}x${cachedBaseMap?.height}")
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to load base map: ${e.message}")
+        }
+    }
+
+    private suspend fun syncServerClock(): Date? {
+        val request = Request.Builder()
+            .url(LATEST_TIME_URL)
+            .header("User-Agent", "Mozilla/5.0 (Android; KyoshinMonitorApp/1.0)")
+            .header("Referer", "http://www.kmoni.bosai.go.jp/")
+            .build()
+
+        return withContext(Dispatchers.IO) {
+            try {
+                okHttpClient.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val body = response.body?.string() ?: return@use null
+                        val json = JSONObject(body)
+                        val latestTimeStr = json.optString("latest_time", "")
+                        if (latestTimeStr.isNotBlank()) {
+                            val serverDate = serverDisplayFormat.parse(latestTimeStr)
+                            if (serverDate != null) {
+                                serverClockOffsetMillis = serverDate.time - System.currentTimeMillis()
+                                lastServerSyncTimestamp = System.currentTimeMillis()
+                                Log.d(TAG, "Server time synced: $latestTimeStr (offset: ${serverClockOffsetMillis}ms)")
+                                return@withContext serverDate
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to sync latest.json: ${e.message}")
+            }
+            return@withContext null
+        }
+    }
+
     private suspend fun fetchLatestImage() {
         val startTime = System.currentTimeMillis()
         val currentStats = _fetchStats.value
-        _fetchStats.value = currentStats.copy(status = KmoniFetchStatus.FETCHING)
 
-        // Try primary timestamp (now - delayOffsetSeconds)
-        val targetMillis = startTime - (delayOffsetSeconds * 1000L)
-        val targetDate = Date(targetMillis)
+        // Check if we need to sync clock with latest.json
+        val needsSync = serverClockOffsetMillis == null ||
+                (startTime - lastServerSyncTimestamp > 12_000L) ||
+                (currentStats.status == KmoniFetchStatus.ERROR)
+
+        var targetDate: Date? = null
+        if (needsSync) {
+            _fetchStats.value = currentStats.copy(status = KmoniFetchStatus.SYNCING)
+            targetDate = syncServerClock()
+        }
+
+        // If not synced just now, calculate target Date using calibrated server offset
+        if (targetDate == null) {
+            val offset = serverClockOffsetMillis ?: -1000L // Default ~1s server delay if uncalibrated
+            targetDate = Date(startTime + offset)
+        }
+
+        _fetchStats.value = _fetchStats.value.copy(status = KmoniFetchStatus.FETCHING)
+
         val targetUrl = buildImageUrl(targetDate, _imageType.value, _depthMode.value)
-
         var resultBitmap: Bitmap? = null
         var successfulUrl = targetUrl
         var successfulDate = targetDate
 
         try {
+            ensureBaseMapLoaded()
+
             resultBitmap = downloadBitmap(targetUrl)
 
             if (resultBitmap == null) {
-                // If 404/not available yet, try fallback 1 second earlier
-                val fallbackMillis = targetMillis - 1000L
-                val fallbackDate = Date(fallbackMillis)
+                // If 404, fallback 1 second earlier
+                val fallbackDate = Date(targetDate.time - 1000L)
                 val fallbackUrl = buildImageUrl(fallbackDate, _imageType.value, _depthMode.value)
 
                 resultBitmap = downloadBitmap(fallbackUrl)
                 if (resultBitmap != null) {
                     successfulUrl = fallbackUrl
                     successfulDate = fallbackDate
-                    // Slightly increase delay offset to stabilize stream
-                    delayOffsetSeconds = min(MAX_DELAY_OFFSET_SEC, delayOffsetSeconds + 1)
-                }
-            } else {
-                // Succeeded directly. If delayOffset was high, gradually optimize
-                if (delayOffsetSeconds > MIN_DELAY_OFFSET_SEC && currentStats.successCount % 10L == 0L) {
-                    delayOffsetSeconds = max(MIN_DELAY_OFFSET_SEC, delayOffsetSeconds - 1)
+                } else {
+                    // Try re-syncing clock immediately next cycle
+                    serverClockOffsetMillis = null
                 }
             }
 
             val elapsed = System.currentTimeMillis() - startTime
 
             if (resultBitmap != null) {
-                _latestBitmap.value = resultBitmap
-                val formattedTime = displayDateFormat.format(successfulDate)
+                // Composite the transparent real-time layer onto the dark base map of Japan
+                val finalCompositeBitmap = compositeOnBasemap(resultBitmap)
+
+                _latestBitmap.value = finalCompositeBitmap
+                val formattedTime = serverDisplayFormat.format(successfulDate)
                 _latestTimestamp.value = formattedTime
 
                 _fetchStats.value = currentStats.copy(
                     status = KmoniFetchStatus.SUCCESS,
                     successCount = currentStats.successCount + 1,
                     lastLatencyMs = elapsed,
-                    currentDelayOffsetSec = delayOffsetSeconds,
+                    currentDelayOffsetSec = 1,
                     lastSuccessTimestamp = formattedTime,
                     latestImageUrl = successfulUrl,
                     errorMessage = null
                 )
 
                 // Periodically check EEW status JSON from NIED
-                if (currentStats.successCount % 3L == 0L) {
+                if (currentStats.successCount % 4L == 0L) {
                     checkNiedEEW(successfulDate)
                 }
             } else {
@@ -248,8 +319,8 @@ class KmoniImageFetcher(
                     status = KmoniFetchStatus.DELAY_ADJUST,
                     failureCount = currentStats.failureCount + 1,
                     lastLatencyMs = elapsed,
-                    currentDelayOffsetSec = delayOffsetSeconds,
-                    errorMessage = "画像準備中 (${delayOffsetSeconds}秒遅延調整)"
+                    latestImageUrl = targetUrl,
+                    errorMessage = "画像更新待機中 (時刻同期中...)"
                 )
             }
         } catch (e: Exception) {
@@ -259,9 +330,34 @@ class KmoniImageFetcher(
                 status = KmoniFetchStatus.ERROR,
                 failureCount = currentStats.failureCount + 1,
                 lastLatencyMs = elapsed,
+                latestImageUrl = targetUrl,
                 errorMessage = e.message ?: "通信エラー"
             )
         }
+    }
+
+    /**
+     * Composites real-time station dots onto NIED dark basemap of Japan
+     */
+    private fun compositeOnBasemap(realtimeLayer: Bitmap): Bitmap {
+        val base = cachedBaseMap
+        if (base == null) {
+            return realtimeLayer
+        }
+
+        val width = base.width
+        val height = base.height
+        val output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(output)
+        val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+
+        // 1. Draw dark basemap with coastline and prefectures
+        canvas.drawBitmap(base, 0f, 0f, paint)
+
+        // 2. Draw live observation station points layer
+        canvas.drawBitmap(realtimeLayer, 0f, 0f, paint)
+
+        return output
     }
 
     private suspend fun downloadBitmap(url: String): Bitmap? = withContext(Dispatchers.IO) {
@@ -278,10 +374,12 @@ class KmoniImageFetcher(
                     if (bytes != null && bytes.isNotEmpty()) {
                         return@withContext BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                     }
+                } else {
+                    Log.d(TAG, "HTTP ${response.code} for $url")
                 }
             }
         } catch (e: Exception) {
-            Log.d(TAG, "Image download failed for $url: ${e.message}")
+            Log.d(TAG, "Download failed for $url: ${e.message}")
         }
         return@withContext null
     }
