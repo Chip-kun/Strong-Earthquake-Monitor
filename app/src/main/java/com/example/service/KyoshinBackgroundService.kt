@@ -32,6 +32,7 @@ class KyoshinBackgroundService : Service() {
 
     private lateinit var eewRepository: EEWNotificationRepository
     private lateinit var voiceAlertManager: VoiceAlertManager
+    private var bgWebSocketClient: com.example.network.KyoshinWebSocketClient? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -46,7 +47,44 @@ class KyoshinBackgroundService : Service() {
 
         startForegroundNotification()
         startMonitoringLoop()
+        startWebSocketListener()
         Log.i(tag, "KyoshinBackgroundService created and running")
+    }
+
+    private fun startWebSocketListener() {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val ws = com.example.network.KyoshinWebSocketClient(serviceScope)
+        bgWebSocketClient = ws
+
+        ws.onEEWReceived = { alert ->
+            val lastEewId = prefs.getString(KEY_LAST_EEW_ID, null)
+            if (alert.id != lastEewId) {
+                prefs.edit().putString(KEY_LAST_EEW_ID, alert.id).apply()
+                Log.i(tag, "WS PUSH: EEW Alert: ${alert.hypocenter} M${alert.magnitude}")
+                wakeLock?.acquire(15000L)
+                serviceScope.launch {
+                    eewRepository.saveEEWAlert(alert)
+                }
+                KyoshinNotificationManager.notifyEEW(applicationContext, alert)
+                voiceAlertManager.announceDetailedEEW(alert)
+            }
+        }
+
+        ws.onEarthquakeReceived = { eq ->
+            val lastEqId = prefs.getString(KEY_LAST_EQ_ID, null)
+            if (eq.id != lastEqId) {
+                prefs.edit().putString(KEY_LAST_EQ_ID, eq.id).apply()
+                Log.i(tag, "WS PUSH: Earthquake: ${eq.hypocenter} maxScale=${eq.maxScale}")
+                wakeLock?.acquire(12000L)
+                serviceScope.launch {
+                    eewRepository.saveEarthquakeItem(eq)
+                }
+                KyoshinNotificationManager.notifyEarthquakeReport(applicationContext, eq)
+                voiceAlertManager.announceDetailedEarthquakeReport(eq)
+            }
+        }
+
+        ws.connect()
     }
 
     private fun startForegroundNotification() {
@@ -203,6 +241,8 @@ class KyoshinBackgroundService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         isMonitoring = false
+        bgWebSocketClient?.disconnect()
+        bgWebSocketClient = null
         serviceJob.cancel()
         if (wakeLock?.isHeld == true) {
             wakeLock?.release()

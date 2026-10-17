@@ -11,10 +11,25 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlin.math.*
 import kotlin.random.Random
 
+import com.example.network.KmoniFetchStats
+import com.example.network.KmoniImageFetcher
+import com.example.network.KmoniImageType
+import com.example.network.KyoshinWebSocketClient
+import com.example.network.WebSocketStats
+import android.graphics.Bitmap
+
 class KyoshinRepository(
     private val externalScope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 ) {
     private val tag = "KyoshinRepository"
+
+    val webSocketClient = KyoshinWebSocketClient(externalScope)
+    val imageFetcher = KmoniImageFetcher(externalScope)
+
+    val webSocketStats: StateFlow<WebSocketStats> = webSocketClient.stats
+    val kmoniBitmap: StateFlow<Bitmap?> = imageFetcher.latestBitmap
+    val kmoniStats: StateFlow<KmoniFetchStats> = imageFetcher.fetchStats
+    val kmoniTimestamp: StateFlow<String> = imageFetcher.latestTimestamp
 
     private val _stations = MutableStateFlow<List<ObservationStation>>(emptyList())
     val stations: StateFlow<List<ObservationStation>> = _stations.asStateFlow()
@@ -45,6 +60,84 @@ class KyoshinRepository(
         initStations()
         startLiveMonitoringLoop()
         fetchEarthquakes()
+
+        // Setup real-time WebSocket client
+        webSocketClient.onEEWReceived = { alert ->
+            Log.i(tag, "Real-time EEW received via WebSocket: ${alert.hypocenter} M${alert.magnitude}")
+            onRealtimeEEWReceived(alert)
+        }
+        webSocketClient.onEarthquakeReceived = { eq ->
+            Log.i(tag, "Real-time Earthquake report received via WebSocket: ${eq.hypocenter} M${eq.magnitude}")
+            onRealtimeEarthquakeReceived(eq)
+        }
+        webSocketClient.connect()
+
+        // Setup NIED periodic image fetcher
+        imageFetcher.onNiedEEWDetected = { alert ->
+            Log.i(tag, "NIED EEW detected via image/web service: ${alert.hypocenter}")
+            onRealtimeEEWReceived(alert)
+        }
+        imageFetcher.start()
+    }
+
+    fun reconnectWebSocket() {
+        webSocketClient.reconnect()
+    }
+
+    fun refreshKmoniImage() {
+        imageFetcher.triggerImmediateFetch()
+    }
+
+    fun onRealtimeEEWReceived(eew: EEWAlert) {
+        val current = _activeEEW.value
+        if (current?.id == eew.id && current.reportNum >= eew.reportNum) {
+            return
+        }
+        countdownJob?.cancel()
+        _activeEEW.value = eew
+
+        countdownJob = externalScope.launch {
+            var remaining = eew.countdownSeconds
+            val startTime = System.currentTimeMillis()
+
+            while (remaining > 0 && _activeEEW.value?.id == eew.id) {
+                delay(1000)
+                remaining--
+                val elapsedSec = (System.currentTimeMillis() - startTime) / 1000f
+
+                val pRadius = elapsedSec * 6.5f + 10f
+                val sRadius = elapsedSec * 3.8f + 5f
+
+                _activeEEW.value = _activeEEW.value?.copy(
+                    countdownSeconds = remaining,
+                    pWaveRadiusKm = pRadius,
+                    sWaveRadiusKm = sRadius
+                )
+            }
+
+            for (i in 0 until 20) {
+                delay(1000)
+                val elapsedSec = (System.currentTimeMillis() - startTime) / 1000f
+                _activeEEW.value = _activeEEW.value?.copy(
+                    countdownSeconds = 0,
+                    pWaveRadiusKm = elapsedSec * 6.5f + 10f,
+                    sWaveRadiusKm = elapsedSec * 3.8f + 5f
+                )
+            }
+
+            _activeEEW.value = null
+        }
+    }
+
+    fun onRealtimeEarthquakeReceived(item: EarthquakeItem) {
+        val current = _earthquakes.value.toMutableList()
+        val existingIndex = current.indexOfFirst { it.id == item.id }
+        if (existingIndex >= 0) {
+            current[existingIndex] = item
+        } else {
+            current.add(0, item)
+        }
+        _earthquakes.value = current.take(50)
     }
 
     fun selectStation(station: ObservationStation?) {
@@ -53,10 +146,18 @@ class KyoshinRepository(
 
     fun setDisplayMode(mode: DisplayMode) {
         _displayMode.value = mode
+        val kmoniType = when (mode) {
+            DisplayMode.SHINDO -> KmoniImageType.SHINDO
+            DisplayMode.PGA -> KmoniImageType.PGA
+            DisplayMode.PGV -> KmoniImageType.PGV
+            DisplayMode.PGD -> KmoniImageType.PGD
+        }
+        imageFetcher.setImageType(kmoniType)
     }
 
     fun setDepthMode(mode: DepthMode) {
         _depthMode.value = mode
+        imageFetcher.setDepthMode(mode)
         val isBorehole = mode == DepthMode.BOREHOLE
         val currentStations = _stations.value
         _stations.value = currentStations.map { st ->

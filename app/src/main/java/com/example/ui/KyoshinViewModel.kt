@@ -60,6 +60,14 @@ class KyoshinViewModel(application: Application) : AndroidViewModel(application)
     private val _selectedHistoryLog = MutableStateFlow<EEWNotificationEntity?>(null)
     val selectedHistoryLog: StateFlow<EEWNotificationEntity?> = _selectedHistoryLog.asStateFlow()
 
+    val webSocketStats = repository.webSocketStats
+    val kmoniBitmap = repository.kmoniBitmap
+    val kmoniStats = repository.kmoniStats
+    val kmoniTimestamp = repository.kmoniTimestamp
+
+    fun reconnectWebSocket() = repository.reconnectWebSocket()
+    fun refreshKmoniImage() = repository.refreshKmoniImage()
+
     private val sharedPreferences = application.getSharedPreferences("kyoshin_settings", Context.MODE_PRIVATE)
 
     private val _isSeismometerEnabled = MutableStateFlow(sharedPreferences.getBoolean("seismometer_enabled", true))

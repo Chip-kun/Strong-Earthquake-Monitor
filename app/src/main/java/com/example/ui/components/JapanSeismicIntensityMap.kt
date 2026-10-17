@@ -607,11 +607,50 @@ fun JapanSeismicIntensityMap(
                     }
                 }
 
-                // Mode switch: Shindo / PGA
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Mode switch: Shindo / PGA & Depth switch: Surface / Borehole
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    val currentDepth = viewModel?.repository?.depthMode?.collectAsState()?.value ?: DepthMode.SURFACE
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFF1E293B))
+                            .padding(2.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(if (currentDepth == DepthMode.SURFACE) KyoshinPrimary else Color.Transparent)
+                                .clickable { viewModel?.repository?.setDepthMode(DepthMode.SURFACE) }
+                                .padding(horizontal = 6.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "地表",
+                                color = if (currentDepth == DepthMode.SURFACE) Color.Black else Color(0xFF94A3B8),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(if (currentDepth == DepthMode.BOREHOLE) Color(0xFF38BDF8) else Color.Transparent)
+                                .clickable { viewModel?.repository?.setDepthMode(DepthMode.BOREHOLE) }
+                                .padding(horizontal = 6.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "地中",
+                                color = if (currentDepth == DepthMode.BOREHOLE) Color.Black else Color(0xFF94A3B8),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
                     Button(
                         onClick = {
-                            displayMode = if (displayMode == DisplayMode.SHINDO) DisplayMode.PGA else DisplayMode.SHINDO
+                            val newMode = if (displayMode == DisplayMode.SHINDO) DisplayMode.PGA else DisplayMode.SHINDO
+                            displayMode = newMode
+                            viewModel?.repository?.setDisplayMode(newMode)
                         },
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                         modifier = Modifier.height(28.dp),
